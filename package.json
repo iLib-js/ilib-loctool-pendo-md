@@ -19,5 +19,8 @@
         "Pendo",
         "markdown",
         "md"
-    ]
+    ],
+    "publishConfig": {
+        "registry": "https://registry.npmjs.org/"
+    }
 }
