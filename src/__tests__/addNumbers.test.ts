@@ -1,7 +1,8 @@
 import addNumbers from "../addNumbers";
 
 describe("addNumbers", () => {
-    it("should add two numbers", () => {
+    // unnecessary async to test linting
+    it("should add two numbers", async () => {
         expect(addNumbers(1, 2)).toBe(3);
     });
 });
