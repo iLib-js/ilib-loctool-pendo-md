@@ -1,0 +1,9 @@
+{
+    "extends": "@tsconfig/node10",
+    "compilerOptions": {
+        "rootDir": "./src",
+        "outDir": "./dist",
+        "declaration": true,
+        "declarationMap": true
+    }
+}

@@ -1,7 +1,8 @@
 {
     "name": "ilib-loctool-pendo-md",
     "version": "1.0.0",
-    "main": "index.js",
+    "main": "dist/index.js",
+    "types": "dist/index.d.ts",
     "author": "Wadim Wawrzenczak <wwawrzenczak@box.com>",
     "license": "Apache-2.0",
     "keywords": [
@@ -20,7 +21,12 @@
         "markdown",
         "md"
     ],
-    "publishConfig": {
-        "registry": "https://registry.npmjs.org/"
+    "scripts": {
+        "build": "tsc"
+    },
+    "devDependencies": {
+        "@tsconfig/node10": "^1.0.11",
+        "@types/node": "10",
+        "typescript": "^5.5.4"
     }
 }
