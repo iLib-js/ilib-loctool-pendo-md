@@ -22,11 +22,16 @@
         "md"
     ],
     "scripts": {
-        "build": "tsc"
+        "build": "tsc",
+        "clean": "rm -rf dist",
+        "test": "jest"
     },
     "devDependencies": {
         "@tsconfig/node10": "^1.0.11",
+        "@types/jest": "^29.5.12",
         "@types/node": "10",
+        "jest": "^29.7.0",
+        "ts-jest": "^29.2.5",
         "typescript": "^5.5.4"
     }
 }
