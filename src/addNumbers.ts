@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 
-export const addNumbers = (a: number, b: number): number => a + b;
+export const addNumbers = (a: number, b: number): number =>
+    a + b;
 
 // // unnecessary async to test linting
 // export const addNumbersAsync = async (a: number, b: number): Promise<number> => a + b;
