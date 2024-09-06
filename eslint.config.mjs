@@ -11,6 +11,7 @@ export async function unnecessarilyAsync() {
 }
 
 export default tseslint.config(
+    { ignores: ["node_modules", "dist"] },
     eslint.configs.recommended,
     ...tseslint.configs.recommendedTypeChecked,
     {
