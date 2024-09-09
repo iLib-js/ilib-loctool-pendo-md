@@ -32,8 +32,7 @@ describe("Pendo Markdown Parser", () => {
             });
         });
 
-        // @TODO unskip once these custom extensions are implemented
-        describe.skip("custom extensions", () => {
+        describe("custom extensions", () => {
             // underline: `++underline++`
             it("parses underline", () => {
                 const ast = parse("++underline++");
@@ -41,7 +40,7 @@ describe("Pendo Markdown Parser", () => {
             });
 
             // color: `{color: #000000}black{/color}`
-            it("parses color", () => {
+            it.skip("parses color", () => {
                 const ast = parse("{color: #000000}black{/color}");
                 expect(ast).toMatchSnapshot();
             });

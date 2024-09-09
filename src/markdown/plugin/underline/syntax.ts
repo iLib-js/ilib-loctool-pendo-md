@@ -6,7 +6,7 @@ import classifyCharacter from "micromark/dist/util/classify-character";
 import chunkedSplice from "micromark/dist/util/chunked-splice";
 import resolveAll from "micromark/dist/util/resolve-all";
 
-import type { Construct, Effects, Event, NotOkay, Okay, Tokenizer } from "micromark/dist/shared-types";
+import type { Construct, Effects, Event, NotOkay, Okay, SyntaxExtension, Tokenizer } from "micromark/dist/shared-types";
 
 const shallow = <T>(obj: T) => Object.assign({}, obj);
 
@@ -32,15 +32,22 @@ interface Options {
 }
 
 /** Syntax extension for `mdast-util-from-markdown` which adds underline support through `++underline++` or `+underline+` */
-export const syntax = (options?: Options) => {
+export const syntax = (options?: Options): SyntaxExtension => {
     const allowSinglePlus = options?.singlePlus ?? false;
 
-    const tokenizer = {
+    const tokenizer: Construct = {
+        // @ts-expect-error: implementation as-is from micromark-extension-gfm-strikethrough@0.6.5
         tokenize: tokenizeUnderline,
         resolveAll: resolveAllUnderline,
     };
 
-    return { text: { CHAR_PLUS: tokenizer }, insideSpan: { null: tokenizer } };
+    return {
+        // @ts-expect-error: implementation as-is from micromark-extension-gfm-strikethrough@0.6.5
+        // even though TS complains about missing null key in Record<CodeAsKey, Construct | Construct[]> for text,
+        // and insideSpan is not typed at all in SyntaxExtension
+        text: { [CHAR_PLUS]: tokenizer },
+        insideSpan: { null: tokenizer },
+    };
 
     // Take events and resolve underline.
     function resolveAllUnderline(events: Event[], context: Tokenizer) {
@@ -185,3 +192,5 @@ export const syntax = (options?: Options) => {
         }
     }
 };
+
+export default syntax;

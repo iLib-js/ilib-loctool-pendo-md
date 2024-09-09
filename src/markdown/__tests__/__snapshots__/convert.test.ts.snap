@@ -1,5 +1,75 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
+exports[`Pendo Markdown Parser Pendo extended syntax custom extensions parses underline 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [
+            {
+              "position": {
+                "end": {
+                  "column": 12,
+                  "line": 1,
+                  "offset": 11,
+                },
+                "start": {
+                  "column": 3,
+                  "line": 1,
+                  "offset": 2,
+                },
+              },
+              "type": "text",
+              "value": "underline",
+            },
+          ],
+          "position": {
+            "end": {
+              "column": 14,
+              "line": 1,
+              "offset": 13,
+            },
+            "start": {
+              "column": 1,
+              "line": 1,
+              "offset": 0,
+            },
+          },
+          "type": "underline",
+        },
+      ],
+      "position": {
+        "end": {
+          "column": 14,
+          "line": 1,
+          "offset": 13,
+        },
+        "start": {
+          "column": 1,
+          "line": 1,
+          "offset": 0,
+        },
+      },
+      "type": "paragraph",
+    },
+  ],
+  "position": {
+    "end": {
+      "column": 14,
+      "line": 1,
+      "offset": 13,
+    },
+    "start": {
+      "column": 1,
+      "line": 1,
+      "offset": 0,
+    },
+  },
+  "type": "root",
+}
+`;
+
 exports[`Pendo Markdown Parser Pendo extended syntax external libs strikethrough 1`] = `
 {
   "children": [
