@@ -27,7 +27,11 @@ const EVENT_TYPE = {
 } as const;
 
 interface Options {
-    /** Whether to additionally allow undersore with single plus like `+underline+` */
+    /**
+     * Whether to additionally allow undersore with single plus like `+underline+`
+     *
+     * @default false
+     */
     singlePlus?: boolean;
 }
 

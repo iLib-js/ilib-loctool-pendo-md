@@ -9,7 +9,7 @@ import type { Root } from "mdast";
 
 export const parse = (markdown: string): Root =>
     fromMarkdown(markdown, {
-        extensions: [strikethroughSyntax(), underlineSyntax()],
+        extensions: [strikethroughSyntax({ singleTilde: false }), underlineSyntax()],
         mdastExtensions: [strikethrough.fromMarkdown, underline.fromMarkdown],
     });
 
