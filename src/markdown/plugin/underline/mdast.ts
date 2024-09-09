@@ -34,13 +34,13 @@ export const fromMarkdown: MdastExtension = {
     // @ts-expect-error: as-is from mdast-util-gfm-strikethrough@0.2.3
     canContainEols: [EXTENDED_NODE_TYPE.UNDERLINE],
     enter: {
-        underline: function (token) {
+        [EXTENDED_NODE_TYPE.UNDERLINE]: function (token) {
             // @ts-expect-error: as-is from mdast-util-gfm-strikethrough@0.2.3
             this.enter({ type: EXTENDED_NODE_TYPE.UNDERLINE, children: [] }, token);
         },
     },
     exit: {
-        underline: function (token) {
+        [EXTENDED_NODE_TYPE.UNDERLINE]: function (token) {
             this.exit(token);
         },
     },
