@@ -2,7 +2,8 @@
     "extends": "@tsconfig/node18",
     "compilerOptions": {
         "allowJs": true,
-        "noEmit": true
+        "noEmit": true,
+        "typeRoots": ["node_modules/@types", "types"]
     },
     "include": ["."],
     "exclude": ["node_modules", "dist"]
