@@ -2,6 +2,7 @@
 
 import type { MdastExtension } from "mdast-util-from-markdown";
 import type { Options } from "mdast-util-to-markdown";
+import type { Parent, PhrasingContent } from "mdast";
 
 import phrasing from "mdast-util-to-markdown/lib/util/container-phrasing";
 
@@ -12,6 +13,22 @@ const EXTENDED_NODE_TYPE = {
 const NODE_TYPE = {
     EMPHASIS: "emphasis",
 } as const;
+
+export interface Underline extends Parent {
+    type: "underline";
+    children: PhrasingContent[];
+}
+
+// extend available nodes in mdast
+// as described in JSDoc of @types/mdast@3.0.15
+declare module "mdast" {
+    interface PhrasingContentMap {
+        underline: Underline;
+    }
+}
+
+const DELIM = "+";
+const DOUBLE_DELIM = DELIM + DELIM;
 
 export const fromMarkdown: MdastExtension = {
     // @ts-expect-error: as-is from mdast-util-gfm-strikethrough@0.2.3
@@ -30,13 +47,13 @@ export const fromMarkdown: MdastExtension = {
 };
 
 export const toMarkdown: Options = {
-    unsafe: [{ character: "+", inConstruct: "phrasing" }],
+    unsafe: [{ character: DELIM, inConstruct: "phrasing" }],
     handlers: {
-        delete: function (node, _, context) {
+        [EXTENDED_NODE_TYPE.UNDERLINE]: function (node, _, context) {
             const exit = context.enter(NODE_TYPE.EMPHASIS);
-            const value = phrasing(node, context, { before: "+", after: "+" });
+            const value = phrasing(node, context, { before: DELIM, after: DELIM });
             exit();
-            return "++" + value + "++";
+            return DOUBLE_DELIM + value + DOUBLE_DELIM;
         },
     },
 };

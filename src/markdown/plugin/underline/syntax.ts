@@ -16,7 +16,7 @@ const TOKEN_TYPE = {
     UNDERLINE_SEQUENCE: "underlineSequence",
     UNDERLINE_SEQUENCE_TEMPORARY: "underlineSequenceTemporary",
     UNDERLINE_TEXT: "underlineText",
-    STRIKETHROUGH: "underline",
+    UNDERLINE: "underline",
     CHARACTER_ESCAPE: "characterEscape",
     DATA: "data",
 } as const;
@@ -82,7 +82,7 @@ export const syntax = (options?: Options): SyntaxExtension => {
                         events[open][1].type = TOKEN_TYPE.UNDERLINE_SEQUENCE;
 
                         underline = {
-                            type: TOKEN_TYPE.STRIKETHROUGH,
+                            type: TOKEN_TYPE.UNDERLINE,
                             start: shallow(events[open][1].start),
                             end: shallow(events[index][1].end),
                         };

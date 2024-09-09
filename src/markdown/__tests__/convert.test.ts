@@ -1,7 +1,7 @@
-import { parse } from "../convert";
+import { parse, stringify } from "../convert";
 import visit from "unist-util-visit";
 
-import type { List } from "mdast";
+import type { Root, List } from "mdast";
 import type { Node } from "unist";
 
 const expectToHaveNode = (ast: Node, nodeType: string) => {
@@ -12,75 +12,188 @@ const expectToHaveNode = (ast: Node, nodeType: string) => {
     expect.assertions(1);
 };
 
-describe("Pendo Markdown Parser", () => {
-    describe("basic markdown", () => {
+describe("Pendo Markdown converter", () => {
+    describe("parse", () => {
         // basic markdown syntax which Pendo supports
         // i.e. bold, italic, link, ordered list (numbers), and unordered list (dash, asterisk, plus)
         // as per https://support.pendo.io/hc/en-us/articles/360031866552-Use-markdown-syntax-for-guide-text-styling
-        it.each([
-            ["bold", "**bold**", "strong"],
-            ["italic (asterisk)", "*italic (asterisk)*", "emphasis"],
-            ["italic (underscore)", "_italic (underscore)_", "emphasis"],
-            ["link", "[link](https://example.com)", "link"],
-        ])(`parses %s`, (_, markdown, nodeType) => {
-            const ast = parse(markdown);
+        describe("basic markdown", () => {
+            it.each([
+                ["bold", "**bold**", "strong"],
+                ["italic (asterisk)", "*italic (asterisk)*", "emphasis"],
+                ["italic (underscore)", "_italic (underscore)_", "emphasis"],
+                ["link", "[link](https://example.com)", "link"],
+            ])(`parses %s`, (_, markdown, nodeType) => {
+                const ast = parse(markdown);
 
-            expectToHaveNode(ast, nodeType);
-        });
-
-        it.each([
-            ["ordered list", "1. list item 1\n2. list item 2\n3. list item 3", true],
-            ["unordered list (dash)", "- list item 1\n- list item 2\n- list item 3", false],
-            ["unordered list (asterisk)", "* list item 1\n* list item 2\n* list item 3", false],
-            ["unordered list (plus)", "+ list item 1\n+ list item 2\n+ list item 3", false],
-        ])(`parses %s`, (_, markdown, ordered) => {
-            const ast = parse(markdown);
-
-            visit(ast, "list", (node: List) => {
-                expect(node.type).toBe("list");
-                expect(node.ordered).toBe(ordered);
-                expect(node.children).toHaveLength(3);
+                expectToHaveNode(ast, nodeType);
             });
 
-            expect.assertions(3);
+            it.each([
+                ["ordered list", "1. list item 1\n2. list item 2\n3. list item 3", true],
+                ["unordered list (dash)", "- list item 1\n- list item 2\n- list item 3", false],
+                ["unordered list (asterisk)", "* list item 1\n* list item 2\n* list item 3", false],
+                ["unordered list (plus)", "+ list item 1\n+ list item 2\n+ list item 3", false],
+            ])(`parses %s`, (_, markdown, ordered) => {
+                const ast = parse(markdown);
+
+                visit(ast, "list", (node: List) => {
+                    expect(node.type).toBe("list");
+                    expect(node.ordered).toBe(ordered);
+                    expect(node.children).toHaveLength(3);
+                });
+
+                expect.assertions(3);
+            });
+        });
+
+        // custom Pendo extensions for markdown syntax
+        // i.e. strikethrough, underline, and color
+        // as per https://support.pendo.io/hc/en-us/articles/360031866552-Use-markdown-syntax-for-guide-text-styling
+        describe("Pendo extended syntax", () => {
+            describe("external libs", () => {
+                // GFM-like strikethrough: `~~strikethrough~~`
+                it("strikethrough", () => {
+                    const markdown = "~~strikethrough~~";
+                    const nodeType = "delete";
+
+                    const ast = parse(markdown);
+
+                    expectToHaveNode(ast, nodeType);
+                });
+            });
+
+            describe("custom extensions", () => {
+                // underline: `++underline++`
+                it("parses underline", () => {
+                    const markdown = "++underline++";
+                    const nodeType = "underline";
+
+                    const ast = parse(markdown);
+
+                    expectToHaveNode(ast, nodeType);
+                });
+
+                // color: `{color: #000000}black{/color}`
+                // @TODO implement color syntax
+                it.skip("parses color", () => {
+                    const markdown = "{color: #000000}black{/color}";
+                    const nodeType = "color";
+
+                    const ast = parse(markdown);
+
+                    expectToHaveNode(ast, nodeType);
+                });
+            });
         });
     });
 
-    // custom Pendo extensions for markdown syntax
-    // i.e. strikethrough, underline, and color
-    // as per https://support.pendo.io/hc/en-us/articles/360031866552-Use-markdown-syntax-for-guide-text-styling
-    describe("Pendo extended syntax", () => {
-        describe("external libs", () => {
-            // GFM-like strikethrough: `~~strikethrough~~`
-            it("strikethrough", () => {
-                const markdown = "~~strikethrough~~";
-                const nodeType = "delete";
+    describe("stringify", () => {
+        // custom Pendo extensions for markdown syntax
+        // i.e. strikethrough, underline, and color
+        // as per https://support.pendo.io/hc/en-us/articles/360031866552-Use-markdown-syntax-for-guide-text-styling
+        describe("Pendo extended syntax", () => {
+            describe("external libs", () => {
+                // GFM-like strikethrough: `~~strikethrough~~`
+                it("stringifies strikethrough", () => {
+                    const markdown = "~~strikethrough~~";
 
-                const ast = parse(markdown);
+                    const ast: Root = {
+                        type: "root",
+                        children: [
+                            {
+                                type: "paragraph",
+                                children: [
+                                    {
+                                        type: "delete",
+                                        children: [
+                                            {
+                                                type: "text",
+                                                value: "strikethrough",
+                                            },
+                                        ],
+                                    },
+                                ],
+                            },
+                        ],
+                    };
 
-                expectToHaveNode(ast, nodeType);
+                    const stringified = stringify(ast);
+
+                    // @TODO address the appended newline
+                    const trimmedStringified = stringified.trim();
+
+                    expect(trimmedStringified).toEqual(markdown);
+                });
             });
-        });
 
-        describe("custom extensions", () => {
-            // underline: `++underline++`
-            it("parses underline", () => {
-                const markdown = "++underline++";
-                const nodeType = "underline";
+            describe("custom extensions", () => {
+                // underline: `++underline++`
+                it("stringifies underline", () => {
+                    const markdown = "++underline++";
 
-                const ast = parse(markdown);
+                    const ast: Root = {
+                        type: "root",
+                        children: [
+                            {
+                                type: "paragraph",
+                                children: [
+                                    {
+                                        type: "underline",
+                                        children: [
+                                            {
+                                                type: "text",
+                                                value: "underline",
+                                            },
+                                        ],
+                                    },
+                                ],
+                            },
+                        ],
+                    };
 
-                expectToHaveNode(ast, nodeType);
-            });
+                    const stringified = stringify(ast);
 
-            // color: `{color: #000000}black{/color}`
-            it.skip("parses color", () => {
-                const markdown = "{color: #000000}black{/color}";
-                const nodeType = "color";
+                    // @TODO address the appended newline
+                    const trimmedStringified = stringified.trim();
 
-                const ast = parse(markdown);
+                    expect(trimmedStringified).toEqual(markdown);
+                });
 
-                expectToHaveNode(ast, nodeType);
+                // color: `{color: #000000}black{/color}`
+                // @TODO implement color syntax
+                it.skip("stringifies color", () => {
+                    const markdown = "{color: #000000}black{/color}";
+
+                    const ast: Root = {
+                        type: "root",
+                        children: [
+                            {
+                                type: "paragraph",
+                                children: [
+                                    {
+                                        // @ts-expect-error: not implemented yet
+                                        type: "color",
+                                        color: "#000000",
+                                        children: [
+                                            {
+                                                type: "text",
+                                                value: "black",
+                                            },
+                                        ],
+                                    },
+                                ],
+                            },
+                        ],
+                    };
+
+                    const stringified = stringify(ast);
+
+                    // @TODO address the appended newline
+                    const trimmedStringified = stringified.trim();
+
+                    expect(trimmedStringified).toEqual(markdown);
+                });
             });
         });
     });
