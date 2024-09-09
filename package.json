@@ -56,8 +56,9 @@
     },
     "dependencies": {
         "mdast-util-from-markdown": "^0",
-        "mdast-util-to-markdown": "^0",
         "mdast-util-gfm-strikethrough": "^0",
+        "mdast-util-to-markdown": "^0",
+        "micromark": "~2.11.0",
         "micromark-extension-gfm-strikethrough": "^0"
     }
 }
