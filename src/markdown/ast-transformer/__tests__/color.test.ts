@@ -6,7 +6,7 @@ import unistUtilRemovePosition from "unist-util-remove-position";
 import type { Root } from "mdast";
 
 const toAst = (markdown: string): Root => {
-    return unistUtilRemovePosition(fromMarkdown(markdown)) as Root;
+    return unistUtilRemovePosition(fromMarkdown(markdown), true) as Root;
 };
 
 describe("ast-transformer/color", () => {

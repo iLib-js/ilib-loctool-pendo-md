@@ -8,7 +8,7 @@ import type { Root } from "mdast";
 import type { Node } from "unist";
 
 const getAstUsingUnsupportedSyntaxPlugin = (markdown: string) =>
-    unistUtilRemovePosition(fromMarkdown(markdown, { extensions: [unsupportedSyntax] })) as Root;
+    unistUtilRemovePosition(fromMarkdown(markdown, { extensions: [unsupportedSyntax] }), true) as Root;
 
 const hasNode = (ast: Node, nodeType: string) => {
     let found = false;
