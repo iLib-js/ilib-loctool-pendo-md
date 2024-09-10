@@ -1,7 +1,9 @@
-import { SyntaxExtension } from "micromark/dist/shared-types";
+import type { SyntaxExtension } from "micromark/dist/shared-types";
 
-export default {
-    // disable mechanism based on https://github.com/micromark/micromark-extension-mdx-md/blob/0.1.1/index.js
+export const syntax: SyntaxExtension = {
+    // @ts-expect-error: disable mechanism based on https://github.com/micromark/micromark-extension-mdx-md/blob/0.1.1/index.js
+    // seems to work fine even though it's not a valid type in micromark@2.11.4
+    // also see https://github.com/micromark/micromark/blob/2.11.4/lib/constructs.mjs#L85
     disable: {
         null: [
             // disable syntax which is not supported in Pendo markdown
@@ -28,4 +30,6 @@ export default {
             "thematicBreak",
         ],
     },
-} as SyntaxExtension;
+};
+
+export default syntax;
