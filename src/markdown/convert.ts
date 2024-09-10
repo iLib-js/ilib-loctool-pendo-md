@@ -6,13 +6,14 @@ import unistUtilRemovePosition from "unist-util-remove-position";
 import underlineSyntax from "./plugin/underline/syntax";
 import underline from "./plugin/underline/mdast";
 import color from "./string-transformer/color";
+import unsupportedSyntax from "./plugin/unsupported/syntax";
 
 import type { Root } from "mdast";
 
 export const parse = (markdown: string): Root => {
     const transformedMarkdown = color.toXmlTags(markdown);
     const ast = fromMarkdown(transformedMarkdown, {
-        extensions: [strikethroughSyntax({ singleTilde: false }), underlineSyntax()],
+        extensions: [unsupportedSyntax, strikethroughSyntax({ singleTilde: false }), underlineSyntax()],
         mdastExtensions: [strikethrough.fromMarkdown, underline.fromMarkdown],
     });
 
