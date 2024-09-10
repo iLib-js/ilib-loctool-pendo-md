@@ -27,7 +27,7 @@ describe("plugin/unsupported/syntax", () => {
         ["autolink", "https://example.com", "link"],
         ["blockquote", "> blockquote", "blockquote"],
         ["code fenced", "```\ncode\n```", "code"],
-        ["code indented", "```\n    code\n```", "code"],
+        ["code indented", "\tcode", "code"],
         ["code inline", "`code`", "inlineCode"],
         ["definition", "[term]: explanation", "definition"],
         ["header", "# header\n\nparaghaph text", "heading"],
