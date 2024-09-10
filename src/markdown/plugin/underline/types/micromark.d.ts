@@ -3,7 +3,7 @@
 //
 // Added missing definitions for functions used in mdast-util-gfm-strikethrough@~0.6.5
 // (https://github.com/micromark/micromark-extension-gfm-strikethrough/tree/0.6.5)
-// which were needed to reimplement it for `++underline++` syntax in TS (see `src/markdown/plugin/underline/syntax.ts`).
+// which were needed to reimplement it for `++underline++` syntax in TS (see `../syntax.ts`).
 
 declare module "micromark/dist/util/classify-character" {
     export default function classifyCharacter(code: number): 1 | 2 | undefined;

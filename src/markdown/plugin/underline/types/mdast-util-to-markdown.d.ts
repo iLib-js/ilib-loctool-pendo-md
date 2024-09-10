@@ -3,7 +3,7 @@
 //
 // Added missing definitions for functions used in mdast-util-gfm-strikethrough@0.2.3
 // (https://github.com/syntax-tree/mdast-util-gfm-strikethrough/tree/0.2.3)
-// which were needed to reimplement it for `++underline++` syntax in TS (see `src/markdown/plugin/underline/mdast.ts`).
+// which were needed to reimplement it for `++underline++` syntax in TS (see `..e/mdast.ts`).
 
 declare module "mdast-util-to-markdown/lib/util/container-phrasing" {
     import type { Node } from "unist";
