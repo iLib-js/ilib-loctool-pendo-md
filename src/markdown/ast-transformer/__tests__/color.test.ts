@@ -1,32 +1,19 @@
 import { toColorNodes } from "../color";
 
+import fromMarkdown from "mdast-util-from-markdown";
+import unistUtilRemovePosition from "unist-util-remove-position";
+
 import type { Root } from "mdast";
+
+const toAst = (markdown: string): Root => {
+    return unistUtilRemovePosition(fromMarkdown(markdown)) as Root;
+};
 
 describe("ast-transformer/color", () => {
     describe("toColorNodes", () => {
         it("should replace color nodes with XML-like nodes", () => {
-            // from `normal text <color value="#000000">colored text</color> normal text`
-            const parsed: Root = {
-                type: "root",
-                children: [
-                    {
-                        type: "paragraph",
-                        children: [
-                            {
-                                type: "text",
-                                value: "normal text ",
-                            },
-                            { type: "html", value: '<color value="#000000">' },
-                            {
-                                type: "text",
-                                value: "colored text",
-                            },
-                            { type: "html", value: "</color>" },
-                            { type: "text", value: " normal text" },
-                        ],
-                    },
-                ],
-            };
+            const parsed = toAst("normal text {color: #000000}colored text{/color} normal text");
+
             const expected = {
                 type: "root",
                 children: [
