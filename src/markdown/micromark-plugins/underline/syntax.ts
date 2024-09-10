@@ -26,7 +26,7 @@ const EVENT_TYPE = {
     EXIT: "exit",
 } as const;
 
-interface Options {
+export interface Options {
     /**
      * Whether to additionally allow undersore with single plus like `+underline+`
      *
