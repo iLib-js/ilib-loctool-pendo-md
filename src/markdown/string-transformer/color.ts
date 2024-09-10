@@ -1,21 +1,61 @@
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- import used in JSDoc link
+import type { toColorNodes } from "../ast-transformer/color";
 /**
- * Replace Pendo markdown extended syntax for color into XML tags,
- * so that micromark parses them into separate mdast nodes that can be further transformed.
- *
- * Pendo markdown color syntax is `{color: #000000}colored text{/color}`.
- * This function replaces all occurrences of opening and closing tags with HTML-like tags
- * `<color value="#000000">colored text</color>`.
+ * Used to match post-conversion color opening and closing nodes
+ * ```markdown
+ * <color value="#000000">colored text</color>
+ * ```
  */
-export const toXmlTags = (markdown: string) =>
-    markdown.replace(/\{color: (#[a-fA-F0-9]{6})\}/g, '<color value="$1">').replace(/\{\/color\}/g, "</color>");
+export const htmlRegex = {
+    opening: /<color value="(?<value>#[a-fA-F0-9]{6})">/,
+    closing: /<\/color>/,
+} as const;
 
 /**
- * Backconverts the XML color tags into Pendo markdown extended color syntax.
+ * Used to match Pendo extended markdown color opening and closing nodes for conversion
+ * ```markdown
+ * {color: #000000}colored text{/color}
+ * ```
  */
-export const toMarkdown = (convertedString: string) =>
-    convertedString.replace(/<color value="(#[a-fA-F0-9]{6})">/g, "{color: $1}").replace(/<\/color>/g, "{/color}");
+const tagRegex = {
+    opening: /\{color: (?<value>#[a-fA-F0-9]{6})\}/,
+    closing: /\{\/color\}/,
+} as const;
+
+const globalRegex = (regex: RegExp) => new RegExp(regex, "g");
+
+/**
+ * Replace Pendo extended markdown syntax for color spans into HTML tags,
+ * so that micromark would parse them as inline HTML nodes (rather than just plain text).
+ *
+ * This allows for further transformation of the AST to obtain custom Color nodes
+ * \- see {@link toColorNodes}.
+ *
+ * Pendo extended markdown color syntax is
+ * ```markdown
+ * {color: #000000}colored text{/color}
+ * ```
+ * This function replaces all occurrences of opening and closing tags with HTML-like tags
+ * ```markdown
+ * <color value="#000000">colored text</color>
+ * ```
+ */
+export const toHtmlTags = (markdown: string) =>
+    markdown
+        .replaceAll(globalRegex(tagRegex.opening), '<color value="$<value>">')
+        .replaceAll(globalRegex(tagRegex.closing), "</color>");
+
+/**
+ * Backconverts the XML color tags into Pendo markdown extended color syntax
+ *
+ * @see {@link toHtmlTags}
+ */
+export const fromHtmlTags = (convertedString: string) =>
+    convertedString
+        .replaceAll(globalRegex(htmlRegex.opening), "{color: $<value>}")
+        .replace(globalRegex(htmlRegex.closing), "{/color}");
 
 export default {
-    toXmlTags,
-    toMarkdown,
+    toHtmlTags,
+    fromHtmlTags,
 };

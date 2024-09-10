@@ -4,12 +4,15 @@ import visit from "unist-util-visit";
 import type { Root, List } from "mdast";
 import type { Node } from "unist";
 
-const expectToHaveNode = (ast: Node, nodeType: string) => {
-    visit(ast, nodeType, (node) => {
-        expect(node.type).toBe(nodeType);
+const hasNode = (ast: Node, nodeType: string) => {
+    let found = false;
+    visit(ast, nodeType, () => {
+        found = true;
+        // stop processing
+        return undefined;
     });
 
-    expect.assertions(1);
+    return found;
 };
 
 describe("Pendo Markdown converter", () => {
@@ -26,7 +29,7 @@ describe("Pendo Markdown converter", () => {
             ])(`parses %s`, (_, markdown, nodeType) => {
                 const ast = parse(markdown);
 
-                expectToHaveNode(ast, nodeType);
+                expect(hasNode(ast, nodeType)).toBe(true);
             });
 
             it.each([
@@ -59,7 +62,7 @@ describe("Pendo Markdown converter", () => {
 
                     const ast = parse(markdown);
 
-                    expectToHaveNode(ast, nodeType);
+                    expect(hasNode(ast, nodeType)).toBe(true);
                 });
             });
 
@@ -71,18 +74,17 @@ describe("Pendo Markdown converter", () => {
 
                     const ast = parse(markdown);
 
-                    expectToHaveNode(ast, nodeType);
+                    expect(hasNode(ast, nodeType)).toBe(true);
                 });
 
                 // color: `{color: #000000}black{/color}`
-                // @TODO implement color syntax
-                it.skip("parses color", () => {
+                it("parses color", () => {
                     const markdown = "{color: #000000}black{/color}";
                     const nodeType = "color";
 
                     const ast = parse(markdown);
 
-                    expectToHaveNode(ast, nodeType);
+                    expect(hasNode(ast, nodeType)).toBe(true);
                 });
             });
         });
@@ -121,7 +123,7 @@ describe("Pendo Markdown converter", () => {
                     const stringified = stringify(ast);
 
                     // @TODO address the appended newline
-                    const trimmedStringified = stringified.trim();
+                    const trimmedStringified = stringified.trimEnd();
 
                     expect(trimmedStringified).toEqual(markdown);
                 });
@@ -155,14 +157,13 @@ describe("Pendo Markdown converter", () => {
                     const stringified = stringify(ast);
 
                     // @TODO address the appended newline
-                    const trimmedStringified = stringified.trim();
+                    const trimmedStringified = stringified.trimEnd();
 
                     expect(trimmedStringified).toEqual(markdown);
                 });
 
                 // color: `{color: #000000}black{/color}`
-                // @TODO implement color syntax
-                it.skip("stringifies color", () => {
+                it("stringifies color", () => {
                     const markdown = "{color: #000000}black{/color}";
 
                     const ast: Root = {
@@ -172,9 +173,8 @@ describe("Pendo Markdown converter", () => {
                                 type: "paragraph",
                                 children: [
                                     {
-                                        // @ts-expect-error: not implemented yet
                                         type: "color",
-                                        color: "#000000",
+                                        value: "#000000",
                                         children: [
                                             {
                                                 type: "text",
@@ -190,7 +190,7 @@ describe("Pendo Markdown converter", () => {
                     const stringified = stringify(ast);
 
                     // @TODO address the appended newline
-                    const trimmedStringified = stringified.trim();
+                    const trimmedStringified = stringified.trimEnd();
 
                     expect(trimmedStringified).toEqual(markdown);
                 });
