@@ -11,8 +11,8 @@ const toAst = (markdown: string): Root => {
 
 describe("ast-transformer/color", () => {
     describe("toColorNodes", () => {
-        it("should replace color nodes with XML-like nodes", () => {
-            const parsed = toAst("normal text {color: #000000}colored text{/color} normal text");
+        it("should reduce HTML color nodes to custom Color nodes", () => {
+            const parsed = toAst('normal text <color value="#000000">colored text</color> normal text');
 
             const expected = {
                 type: "root",
