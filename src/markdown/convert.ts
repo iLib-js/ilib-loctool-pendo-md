@@ -3,10 +3,10 @@ import strikethrough from "mdast-util-gfm-strikethrough";
 import toMarkdown from "mdast-util-to-markdown";
 import strikethroughSyntax from "micromark-extension-gfm-strikethrough";
 import unistUtilRemovePosition from "unist-util-remove-position";
-import underline from "./micromark-plugins/underline";
+import underline from "./micromark-plugin/underline";
 import colorString from "./string-transformer/color";
 import colorAst from "./ast-transformer/color";
-import unsupported from "./micromark-plugins/unsupported";
+import unsupported from "./micromark-plugin/unsupported";
 
 import type { Root } from "mdast";
 

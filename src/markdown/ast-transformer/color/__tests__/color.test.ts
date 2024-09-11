@@ -9,7 +9,7 @@ const toAst = (markdown: string): Root => {
     return unistUtilRemovePosition(fromMarkdown(markdown), true) as Root;
 };
 
-describe("ast-transformer/color", () => {
+describe("ast-transformer/color/color", () => {
     describe("toColorNodes", () => {
         it("should not modify the AST if there are no color nodes", () => {
             const parsedAst = toAst("normal text");

@@ -9,8 +9,8 @@ import type {
     ListItem as MListItem,
 } from "mdast";
 
-import type { Color as MColor } from "../markdown/ast-transformer/color";
-import type { Underline as MUnderline } from "../markdown/micromark-plugins/underline";
+import type { Color as MColor } from "../color/color";
+import type { Underline as MUnderline } from "../../micromark-plugin/underline";
 
 interface BaseComponentData {
     type: string;

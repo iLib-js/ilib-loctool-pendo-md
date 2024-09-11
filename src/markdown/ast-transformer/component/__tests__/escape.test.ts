@@ -2,7 +2,7 @@ import u from "unist-builder";
 import { fromComponents, toComponents } from "../escape";
 import type { ComponentData } from "../component";
 
-describe("escape", () => {
+describe("ast-transformer/component/escape", () => {
     describe("toComponents", () => {
         it("produces a list of escaped components", () => {
             // text **bold** [linklabel](https://example.com) *italic*
