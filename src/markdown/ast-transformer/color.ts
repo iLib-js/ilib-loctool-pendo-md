@@ -38,7 +38,7 @@ const closingNodeRegex = new RegExp(`^${colorRegex.closing.source}$`);
  */
 export const toColorNodes = <T extends Parent>(root: T): T => {
     visit(root, "html", (node: HTML, index, parent) => {
-        // only process if the node has siblings
+        // only process if the node is a child
         if (!parent) {
             return visit.CONTINUE;
         }
@@ -123,7 +123,7 @@ export const toColorNodes = <T extends Parent>(root: T): T => {
  */
 export const fromColorNodes = <T extends Parent>(root: T): T => {
     visit(root, "color", (node: Color, index, parent) => {
-        // only process if the node has siblings
+        // only process if the node is a child
         if (!parent) {
             return visit.CONTINUE;
         }
