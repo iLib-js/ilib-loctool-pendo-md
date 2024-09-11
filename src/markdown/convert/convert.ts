@@ -68,7 +68,7 @@ export const convert = (markdown: string): readonly [string, ComponentList] => {
     const astNoPosition = unistUtilRemovePosition(ast) as Root;
 
     // step 3:
-    // transform the given mdast tree to find HTML nodes corresponding to <color ...> nodes
+    // transform the given mdast tree to find HTML nodes corresponding to <color ...> tags
     // and replace them with custom Color ast nodes
     const astWithColorNodes = colorAst.toColorNodes(astNoPosition);
 
@@ -87,4 +87,58 @@ export const convert = (markdown: string): readonly [string, ComponentList] => {
     const trimmedEscapedString = escapedString.trimEnd();
 
     return [trimmedEscapedString, components] as const;
+};
+
+/**
+ * Take an escaped string and a list of components and backconvert it to Pendo markdown syntax.
+ *
+ * Given an escaped string with numbered components like this
+ * ```text
+ * string with <c0>emphasis</c0>, <c1>underline</c1>, <c2>colored text</c2> and <c3>a link</c3>
+ * ```
+ * and a list of components like this
+ * ```text
+ * - c0: emphasis
+ * - c1: underline
+ * - c2: color #FF0000
+ * - c3: link https://example.com
+ * ```
+ * transform it back to Pendo markdown syntax
+ * ``` markdown
+ * string with *emphasis*, ++underline++, {color: #FF0000}colored text{/color} and [a link](https://example.com)
+ * ```
+ *
+ * This is reverse operation to {@link convert} and should produce the original markdown string.
+ */
+export const backconvert = (escapedString: string, components: ComponentList): string => {
+    // step 1:
+    // parse the escaped string into mdast;
+    // use the same parser plugins as in `convert` to ensure compatibility
+    // (most importantly, the unsupported syntax should match)
+    const ast = fromMarkdown(escapedString);
+
+    // step 2:
+    // replace numbered components with original mdast nodes
+    // (this includes custom Color nodes)
+    const astNoComponents = component.fromComponents(ast, components) as Root;
+
+    // step 3:
+    // replace custom Color nodes with HTML <color ...> tags
+    const astNoColorNodes = colorAst.fromColorNodes(astNoComponents);
+
+    // step 4:
+    // reassemble the backconverted string
+    const markdownWithColorAsHtml = toMarkdown(astNoColorNodes);
+
+    // step 5:
+    // revert color tags <color value="#000000"></color>
+    // back to Pendo markdown syntax {color: #000000}{/color}
+    const markdown = colorString.fromHtmlTags(markdownWithColorAsHtml);
+
+    // step 6:
+    // trim the produced string to remove the trailing newline
+    // (`toMarkdown` always inerts a newline at the end of a paragraph)
+    const trimmedMarkdown = markdown.trimEnd();
+
+    return trimmedMarkdown;
 };
