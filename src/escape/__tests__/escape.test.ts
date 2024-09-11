@@ -1,6 +1,6 @@
 import u from "unist-builder";
 import { fromComponents, toComponents } from "../escape";
-import type { Component } from "../component";
+import type { ComponentData } from "../component";
 
 describe("escape", () => {
     describe("toComponents", () => {
@@ -28,43 +28,43 @@ describe("escape", () => {
 
             expect(components).toEqual(expected);
         });
-    });
 
-    it("transforms the mdast tree", () => {
-        // text **bold** [linklabel](https://example.com) *italic*
-        const ast = u("root", [
-            u("paragraph", [
-                u("text", "text "),
-                u("strong", [u("text", "bold")]),
-                u("text", " "),
-                u("link", { url: "https://example.com" }, [u("text", "linklabel")]),
-                u("text", " "),
-                u("emphasis", [u("text", "italic")]),
-            ]),
-        ]);
+        it("transforms the mdast tree", () => {
+            // text **bold** [linklabel](https://example.com) *italic*
+            const ast = u("root", [
+                u("paragraph", [
+                    u("text", "text "),
+                    u("strong", [u("text", "bold")]),
+                    u("text", " "),
+                    u("link", { url: "https://example.com" }, [u("text", "linklabel")]),
+                    u("text", " "),
+                    u("emphasis", [u("text", "italic")]),
+                ]),
+            ]);
 
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const [transformed, _] = toComponents(ast);
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            const [transformed, _] = toComponents(ast);
 
-        // expect to get tree corresponding to the following converted string:
-        // text <c0>bold</c0> <c1>linklabel</c1> <c2>italic</c2>
-        const expected = u("root", [
-            u("paragraph", [
-                u("text", "text "),
-                u("html", { value: "<c0>" }),
-                u("text", "bold"),
-                u("html", { value: "</c0>" }),
-                u("text", " "),
-                u("html", { value: "<c1>" }),
-                u("text", "linklabel"),
-                u("html", { value: "</c1>" }),
-                u("text", " "),
-                u("html", { value: "<c2>" }),
-                u("text", "italic"),
-                u("html", { value: "</c2>" }),
-            ]),
-        ]);
-        expect(transformed).toEqual(expected);
+            // expect to get tree corresponding to the following converted string:
+            // text <c0>bold</c0> <c1>linklabel</c1> <c2>italic</c2>
+            const expected = u("root", [
+                u("paragraph", [
+                    u("text", "text "),
+                    u("html", { value: "<c0>" }),
+                    u("text", "bold"),
+                    u("html", { value: "</c0>" }),
+                    u("text", " "),
+                    u("html", { value: "<c1>" }),
+                    u("text", "linklabel"),
+                    u("html", { value: "</c1>" }),
+                    u("text", " "),
+                    u("html", { value: "<c2>" }),
+                    u("text", "italic"),
+                    u("html", { value: "</c2>" }),
+                ]),
+            ]);
+            expect(transformed).toEqual(expected);
+        });
     });
 
     describe("fromComponents", () => {
@@ -80,7 +80,7 @@ describe("escape", () => {
                 { type: "strong" },
                 { type: "link", url: "https://example.com" },
                 { type: "emphasis" },
-            ] as Component[];
+            ] as ComponentData[];
 
             // converted string (further unmodified):
             // text <c0>bold</c0> <c1>linklabel</c1> <c2>italic</c2>
@@ -133,7 +133,7 @@ describe("escape", () => {
                 { type: "strong" },
                 { type: "link", url: "https://example.com" },
                 { type: "emphasis" },
-            ] as Component[];
+            ] as ComponentData[];
 
             // converted text (unmodified):
             // text <c1>linklabel</c1> <c0>bold</c0> <c2>italic</c2>
