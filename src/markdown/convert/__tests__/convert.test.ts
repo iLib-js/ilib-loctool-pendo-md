@@ -59,5 +59,33 @@ describe("markdown/convert", () => {
                 `string with *emphasis*, ++underline++, {color: #FF0000}colored text{/color} and [a link](https://example.com)`,
             );
         });
+
+        it("should backconvert shuffled escaped string to markdown syntax", () => {
+            // components parsed from markdown string
+            // string with *emphasis*, ++underline++, {color: #FF0000}colored text{/color} and [a link](https://example.com)
+            const components: ComponentList = [
+                { type: "emphasis" },
+                {
+                    type: "underline",
+                },
+                {
+                    type: "color",
+                    value: "#FF0000",
+                },
+                {
+                    type: "link",
+                    url: "https://example.com",
+                },
+            ];
+
+            // escaped string with shuffled order (as if it came from translation)
+            const escapedShuffled = `string with <c2>colored text</c2>, <c1>underline</c1>, <c0>emphasis</c0> and <c3>a link</c3>`;
+
+            const backconverted = backconvert(escapedShuffled, components);
+
+            expect(backconverted).toBe(
+                `string with {color: #FF0000}colored text{/color}, ++underline++, *emphasis* and [a link](https://example.com)`,
+            );
+        });
     });
 });
