@@ -1,3 +1,10 @@
 export type { ComponentData, ComponentList } from "./component";
 
-export { fromComponents, toComponents } from "./escape";
+import { fromComponents, toComponents } from "./escape";
+
+export { fromComponents, toComponents };
+
+export default {
+    fromComponents,
+    toComponents,
+};
