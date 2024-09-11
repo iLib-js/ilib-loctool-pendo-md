@@ -54,6 +54,7 @@ export const convert = (markdown: string): readonly [string, ComponentList] => {
     // to convert their custom Color tags {color: #000000}{/color}
     // into HTML tags <color value="#000000"></color>
     // which are easier to process through AST transformations
+    // @TODO this and related steps should be removed after implementing proper micromark extension for parsing color tags
     const markdownWithColorAsHtml = colorString.toHtmlTags(markdown);
 
     // step 2:
