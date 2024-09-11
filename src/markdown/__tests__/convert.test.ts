@@ -9,7 +9,7 @@ const hasNode = (ast: Node, nodeType: string) => {
     visit(ast, nodeType, () => {
         found = true;
         // stop processing
-        return undefined;
+        return visit.EXIT;
     });
 
     return found;

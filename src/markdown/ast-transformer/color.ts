@@ -40,12 +40,12 @@ export const toColorNodes = <T extends Parent>(root: T): T => {
     visit(root, "html", (node: HTML, index, parent) => {
         // only process if the node has siblings
         if (!parent) {
-            return;
+            return visit.EXIT;
         }
 
         // only process after encountering an opening tag
         if (!openingNodeRegex.test(node.value)) {
-            return;
+            return visit.CONTINUE;
         }
         const colorValue = node.value.match(openingNodeRegex)![1];
 
@@ -110,7 +110,7 @@ export const toColorNodes = <T extends Parent>(root: T): T => {
 
         parent.children.splice(index, deleteCount, colorNode);
 
-        // remaining siblings and/or nested color tags will be processed recursively
+        // recurse into the newly created Color node to process any nested color tags
         return index;
     });
     return root;
@@ -125,7 +125,7 @@ export const fromColorNodes = <T extends Parent>(root: T): T => {
     visit(root, "color", (node: Color, index, parent) => {
         // only process if the node has siblings
         if (!parent) {
-            return;
+            return visit.EXIT;
         }
 
         // replace the Color node with HTML opening and closing tags
@@ -137,7 +137,7 @@ export const fromColorNodes = <T extends Parent>(root: T): T => {
             value: closingTag,
         } as HTML);
 
-        // remaining siblings will be processed recursively
+        // recurse into the newly created Color node to process any nested color tags
         return index;
     });
     return root;
