@@ -1,5 +1,5 @@
 import visit from "unist-util-visit";
-import { htmlRegex as colorRegex } from "../string-transformer/color";
+import { htmlRegex as colorRegex } from "../../string-transformer/color";
 
 import type { Content, Parent, HTML } from "mdast";
 
@@ -142,5 +142,3 @@ export const fromColorNodes = <T extends Parent>(root: T): T => {
     });
     return root;
 };
-
-export default { toColorNodes, fromColorNodes };
