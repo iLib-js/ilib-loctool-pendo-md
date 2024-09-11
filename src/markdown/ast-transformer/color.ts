@@ -40,7 +40,7 @@ export const toColorNodes = <T extends Parent>(root: T): T => {
     visit(root, "html", (node: HTML, index, parent) => {
         // only process if the node has siblings
         if (!parent) {
-            return visit.EXIT;
+            return visit.CONTINUE;
         }
 
         // only process after encountering an opening tag
@@ -125,7 +125,7 @@ export const fromColorNodes = <T extends Parent>(root: T): T => {
     visit(root, "color", (node: Color, index, parent) => {
         // only process if the node has siblings
         if (!parent) {
-            return visit.EXIT;
+            return visit.CONTINUE;
         }
 
         // replace the Color node with HTML opening and closing tags
