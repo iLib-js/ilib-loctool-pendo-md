@@ -43,6 +43,7 @@
         "@types/eslint__js": "^8.42.3",
         "@types/jest": "^29.5.12",
         "@types/node": "18",
+        "@types/ungap__structured-clone": "^1.2.0",
         "eslint": "^9.9.1",
         "eslint-config-prettier": "^9.1.0",
         "globals": "^15.9.0",
@@ -53,9 +54,11 @@
         "ts-jest": "^29.2.5",
         "typescript": "^5.5.4",
         "typescript-eslint": "^8.4.0",
+        "unist-builder": "2",
         "unist-util-visit": "^2"
     },
     "dependencies": {
+        "@ungap/structured-clone": "^1.2.0",
         "mdast-util-from-markdown": "^0",
         "mdast-util-gfm-strikethrough": "^0",
         "mdast-util-to-markdown": "^0",
