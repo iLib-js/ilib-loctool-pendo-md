@@ -1,6 +1,8 @@
 import visit from "unist-util-visit";
 import { htmlRegex } from "../../string-transformer/color";
+import structuredClone from "@ungap/structured-clone";
 
+import type { Node } from "unist";
 import type { Content, Parent, HTML } from "mdast";
 
 /**
@@ -28,8 +30,11 @@ const closingNodeRegex = new RegExp(`^${htmlRegex.closing.source}$`);
  * into a single custom node {@link Color}. All siblings between the opening and closing nodes
  * become nested children of the new node.
  */
-export const toColorNodes = <T extends Parent>(root: T): T => {
-    visit(root, "html", (node: HTML, index, parent) => {
+export const toColorNodes = <T extends Node>(tree: T): T => {
+    // copy the tree to avoid modifying original
+    const clone = structuredClone(tree);
+
+    visit(clone, "html", (node: HTML, index, parent) => {
         // only process if the node is a child
         if (!parent) {
             return visit.CONTINUE;
@@ -105,7 +110,8 @@ export const toColorNodes = <T extends Parent>(root: T): T => {
         // recurse into the newly created Color node to process any nested color tags
         return index;
     });
-    return root;
+
+    return clone;
 };
 
 /**
@@ -113,8 +119,11 @@ export const toColorNodes = <T extends Parent>(root: T): T => {
  *
  * @see toColorNodes
  */
-export const fromColorNodes = <T extends Parent>(root: T): T => {
-    visit(root, "color", (node: Color, index, parent) => {
+export const fromColorNodes = <T extends Node>(tree: T): T => {
+    // copy the tree to avoid modifying original
+    const clone = structuredClone(tree);
+
+    visit(clone, "color", (node: Color, index, parent) => {
         // only process if the node is a child
         if (!parent) {
             return visit.CONTINUE;
@@ -132,5 +141,6 @@ export const fromColorNodes = <T extends Parent>(root: T): T => {
         // recurse into the newly created Color node to process any nested color tags
         return index;
     });
-    return root;
+
+    return clone;
 };

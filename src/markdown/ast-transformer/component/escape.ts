@@ -73,7 +73,7 @@ const isComponentNode = (node: Node): node is ComponentNode =>
  * - componentClose value: </c0> componentIndex: 0, componentNode: close
  * ```
  */
-const htmlNodesToComponentNodes = (tree: Node) => {
+const htmlNodesToComponentNodes = <T extends Node>(tree: T): T => {
     // clone the tree to avoid modifying original
     const clone = structuredClone(tree);
 
@@ -113,7 +113,7 @@ const htmlNodesToComponentNodes = (tree: Node) => {
  *
  * This should be applied after the AST has been processed by {@link htmlNodesToComponentNodes}.
  */
-const componentNodesToHtmlNodes = (tree: Node) => {
+const componentNodesToHtmlNodes = <T extends Node>(tree: T): T => {
     // clone the tree to avoid modifying original
     const clone = structuredClone(tree);
 
@@ -181,7 +181,10 @@ const componentNodesToHtmlNodes = (tree: Node) => {
  *
  * @returns A tuple containing the transformed mdast tree and the substituted components.
  */
-export const toComponents = <C>(tree: Node, mapNodeToComponentData: (node: Node) => C | null): readonly [Node, C[]] => {
+export const toComponents = <C, T extends Node>(
+    tree: T,
+    mapNodeToComponentData: (node: Node) => C | null,
+): readonly [T, C[]] => {
     // copy the tree to avoid modifying original
     const clone = structuredClone(tree);
 
@@ -256,11 +259,11 @@ export const toComponents = <C>(tree: Node, mapNodeToComponentData: (node: Node)
  * Backconverts the escaped AST (parsed from a string with components) to the original AST
  * using previosly substituted components.
  */
-export const fromComponents = <C>(
-    tree: Node,
+export const fromComponents = <C, T extends Node>(
+    tree: T,
     components: C[],
     mapComponentDataToNode: (componentData: C) => Node,
-): Node => {
+): T => {
     // create a transformed copy of the AST
     // discovering and transforming any HTML node that matches the component node format
     const cloneWithComponents = htmlNodesToComponentNodes(tree);
