@@ -19,7 +19,7 @@ const parse = (markdown: string, singlePlus?: boolean) =>
 
 const stringify = (tree: Root) => toMarkdown(tree, { extensions: [mdast.toMarkdown] });
 
-describe("underline", () => {
+describe("micromark-plugin-underline", () => {
     describe("markdown to mdast", () => {
         it("should support underline", () => {
             const markdown = "a ++b++ c.";
