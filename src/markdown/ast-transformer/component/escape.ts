@@ -2,7 +2,7 @@ import visit from "unist-util-visit";
 import structuredClone from "@ungap/structured-clone";
 
 import type { Node } from "unist";
-import type { HTML, Content } from "mdast";
+import type { HTML } from "mdast";
 
 /**
  * Mdast HTML component with component metadata injected.
@@ -275,7 +275,7 @@ export const fromComponents = <C, T extends Node>(
         }
 
         // ensure this is either a component open or self closing node
-        if (!isComponentNode(node)) {
+        if (!isComponentNode(node) || node.componentNode === "close") {
             return visit.CONTINUE;
         }
 
@@ -326,7 +326,7 @@ export const fromComponents = <C, T extends Node>(
 
         // replace HTML nodes span with the original mdast node
         // and put nodes from between the opening and closing tags
-        originalNode.children = parent.children.slice(index + 1, closingNodeIndex) as Content[];
+        originalNode.children = parent.children.slice(index + 1, closingNodeIndex);
         parent.children.splice(index, closingNodeIndex - index + 1, originalNode);
 
         // make sure to descend into the children of the newly inserted node
