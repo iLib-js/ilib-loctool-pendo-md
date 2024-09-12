@@ -22,7 +22,7 @@ const hasNode = (ast: Node, nodeType: string) => {
 };
 
 // supported syntax per per https://support.pendo.io/hc/en-us/articles/360031866552-Use-markdown-syntax-for-guide-text-styling
-describe("plugin/unsupported/syntax", () => {
+describe("micromark-plugin-unsupported", () => {
     it.each([
         ["autolink", "https://example.com", "link"],
         ["blockquote", "> blockquote", "blockquote"],
