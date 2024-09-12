@@ -505,5 +505,53 @@ describe("ast-transformer-component/escape", () => {
                 expect(actualAst).toEqual(expectedAst);
             });
         });
+
+        describe("shuffled components", () => {
+            it("backconverts from strings with shuffled components", () => {
+                /**
+                 * Original string was
+                 * ```markdown
+                 * {color: #000000}black{/color} {color: #FFFFFF}white{/color}
+                 * ```
+                 * and string before translation was
+                 * ```markdown
+                 * <c0>black</c0> <c1>white</c1>
+                 * ```
+                 */
+                const components = [
+                    { type: "wrapping-attr" as const, value: "#000000" }, // {color: #000000}
+                    { type: "wrapping-attr" as const, value: "#FFFFFF" }, // {color: #FFFFFF}
+                ];
+
+                /** String after translation is shuffled
+                 * ```markdown
+                 * <c1>white</c1> <c0>black</c0>
+                 * ```
+                 */
+                const ast = u("root", [
+                    u("html", "<c1>"),
+                    u("text", "white"),
+                    u("html", "</c1>"),
+                    u("text", " "),
+                    u("html", "<c0>"),
+                    u("text", "black"),
+                    u("html", "</c0>"),
+                ]);
+
+                const actualAst = fromComponents(ast, components, mapComponentDataToNode);
+
+                /**
+                 * Backconverted should be
+                 * ```markdown
+                 * {color: #FFFFFF}white{/color} {color: #000000}black{/color}
+                 */
+                const expectedAst = u("root", [
+                    u("wrapping-attr", { value: "#FFFFFF" }, [u("text", "white")]),
+                    u("text", " "),
+                    u("wrapping-attr", { value: "#000000" }, [u("text", "black")]),
+                ]);
+                expect(actualAst).toEqual(expectedAst);
+            });
+        });
     });
 });
