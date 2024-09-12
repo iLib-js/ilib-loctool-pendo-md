@@ -28,16 +28,16 @@ const EVENT_TYPE = {
 
 export interface Options {
     /**
-     * Whether to additionally allow undersore with single plus like `+underline+`
+     * Whether to allow underline with single plus like `+underline+`
      *
-     * @default false
+     * @default true
      */
     singlePlus?: boolean;
 }
 
 /** Syntax extension for `mdast-util-from-markdown` which adds underline support through `++underline++` or `+underline+` */
 export const syntax = (options?: Options): SyntaxExtension => {
-    const allowSinglePlus = options?.singlePlus ?? false;
+    const allowSinglePlus = options?.singlePlus ?? true;
 
     const tokenizer: Construct = {
         // @ts-expect-error: implementation as-is from micromark-extension-gfm-strikethrough@0.6.5
