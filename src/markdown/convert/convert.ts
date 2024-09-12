@@ -80,7 +80,7 @@ export const convert = (markdown: string): readonly [string, ComponentList] => {
 
     // step 5:
     // reassemble the escaped string from the AST with components
-    const escapedString = toMarkdown(astWithComponents as Root);
+    const escapedString = toMarkdown(astWithComponents);
 
     // step 6:
     // trim the produced string to remove the trailing newline
@@ -121,7 +121,7 @@ export const backconvert = (escapedString: string, components: ComponentList): s
     // step 2:
     // replace numbered components with original mdast nodes
     // (this includes custom Color nodes)
-    const astNoComponents = component.fromComponents(ast, components) as Root;
+    const astNoComponents = component.fromComponents(ast, components);
 
     // step 3:
     // replace custom Color nodes with HTML <color ...> tags
