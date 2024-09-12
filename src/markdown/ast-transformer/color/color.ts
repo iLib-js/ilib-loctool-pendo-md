@@ -1,5 +1,5 @@
 import visit from "unist-util-visit";
-import { htmlRegex as colorRegex } from "../../string-transformer/color";
+import { htmlRegex } from "../../string-transformer/color";
 
 import type { Content, Parent, HTML } from "mdast";
 
@@ -11,16 +11,8 @@ export interface Color extends Parent {
     value: string;
 }
 
-// extend available nodes in mdast
-// as described in JSDoc of @types/mdast@3.0.15
-declare module "mdast" {
-    interface PhrasingContentMap {
-        Color: Color;
-    }
-}
-
-const openingNodeRegex = new RegExp(`^${colorRegex.opening.source}$`);
-const closingNodeRegex = new RegExp(`^${colorRegex.closing.source}$`);
+const openingNodeRegex = new RegExp(`^${htmlRegex.opening.source}$`);
+const closingNodeRegex = new RegExp(`^${htmlRegex.closing.source}$`);
 
 /**
  * Transform AST to create custom {@link Color} nodes by consuming
