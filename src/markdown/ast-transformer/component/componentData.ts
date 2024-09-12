@@ -1,43 +1,43 @@
-interface BaseComponentData {
+export interface BaseComponentData {
     type: string;
 }
 
-interface CBold extends BaseComponentData {
+export interface CBold extends BaseComponentData {
     type: "strong";
 }
 
-interface CItalic extends BaseComponentData {
+export interface CItalic extends BaseComponentData {
     type: "emphasis";
 }
 
-interface CUnderline extends BaseComponentData {
+export interface CUnderline extends BaseComponentData {
     type: "underline";
 }
 
-interface CStrikethrough extends BaseComponentData {
+export interface CStrikethrough extends BaseComponentData {
     type: "delete";
 }
 
-interface CLink extends BaseComponentData {
+export interface CLink extends BaseComponentData {
     type: "link";
     url: string;
 }
 
-interface CList extends BaseComponentData {
+export interface CList extends BaseComponentData {
     type: "list";
     ordered: boolean;
 }
 
-interface CListItem extends BaseComponentData {
+export interface CListItem extends BaseComponentData {
     type: "listItem";
 }
 
-interface CColor extends BaseComponentData {
+export interface CColor extends BaseComponentData {
     type: "color";
     value: string;
 }
 
-interface CHTML extends BaseComponentData {
+export interface CHTML extends BaseComponentData {
     type: "html";
     value: string;
 }
