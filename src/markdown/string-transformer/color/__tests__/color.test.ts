@@ -1,6 +1,6 @@
 import { toHtmlTags, fromHtmlTags } from "../color";
 
-describe("string-transformer/color", () => {
+describe("string-transformer-color", () => {
     describe("toXmlTags", () => {
         it("should replace color tags with XML-like tags", () => {
             const markdown = "{color: #000000}colored text{/color}";
