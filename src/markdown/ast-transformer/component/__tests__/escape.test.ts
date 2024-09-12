@@ -764,7 +764,7 @@ describe("ast-transformer-component/escape", () => {
                 expect(actualAst).toEqual(expectedAst);
             });
 
-            it("ignores component closing tak without matching opening tag", () => {
+            it("ignores component closing tag without matching opening tag", () => {
                 /**
                  * Original string was
                  * ```markdown
@@ -841,6 +841,76 @@ describe("ast-transformer-component/escape", () => {
                  * ```
                  */
                 const expectedAst = u("root", [u("html", "</c0>"), u("text", "black"), u("html", "<c0>")]); // no change
+
+                expect(actualAst).toEqual(expectedAst);
+            });
+
+            it("ignores dual component open tags", () => {
+                /**
+                 * Original string was
+                 * ```markdown
+                 * {color: #000000}black{/color}
+                 * ```
+                 * and string before translation was
+                 * ```markdown
+                 * <c0>black</c0>
+                 */
+                const components = [
+                    { type: "wrapping-attr" as const, value: "#000000" }, // {color: #000000}
+                ];
+
+                /**
+                 * String after translation is malformed
+                 * ```markdown
+                 * <c0>black<c0>
+                 * ```
+                 */
+                const ast = u("root", [u("html", "<c0>"), u("text", "black"), u("html", "<c0>")]);
+
+                const actualAst = fromComponents(ast, components, mapComponentDataToNode);
+
+                /**
+                 * Backconverted should be
+                 * ```markdown
+                 * <c0>black<c0>
+                 * ```
+                 */
+                const expectedAst = u("root", [u("html", "<c0>"), u("text", "black"), u("html", "<c0>")]); // no change
+
+                expect(actualAst).toEqual(expectedAst);
+            });
+
+            it("ignores dual component close tags", () => {
+                /**
+                 * Original string was
+                 * ```markdown
+                 * {color: #000000}black{/color}
+                 * ```
+                 * and string before translation was
+                 * ```markdown
+                 * <c0>black</c0>
+                 */
+                const components = [
+                    { type: "wrapping-attr" as const, value: "#000000" }, // {color: #000000}
+                ];
+
+                /**
+                 * String after translation is malformed
+                 * ```markdown
+                 * <c0/>black</c0>
+                 * ```
+                 */
+                const ast = u("root", [u("html", "</c0>"), u("text", "black"), u("html", "</c0>")]);
+
+                const actualAst = fromComponents(ast, components, mapComponentDataToNode);
+
+                /**
+                 * Backconverted should be
+                 * ```markdown
+                 * </c0>black</c0>
+                 * ```
+                 */
+                const expectedAst = u("root", [u("html", "</c0>"), u("text", "black"), u("html", "</c0>")]); // no change
 
                 expect(actualAst).toEqual(expectedAst);
             });
