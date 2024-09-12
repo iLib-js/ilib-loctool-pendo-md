@@ -1,5 +1,4 @@
 import visit from "unist-util-visit";
-import { ComponentList, mapComponentDataToNode, mapNodeToComponentData } from "./component";
 import structuredClone from "@ungap/structured-clone";
 
 import type { Node } from "unist";
@@ -8,7 +7,8 @@ import type { HTML, Content } from "mdast";
 /**
  * Mdast HTML component with component metadata injected.
  */
-interface BaseComponentNode extends HTML {
+interface BaseComponentNode extends Node {
+    type: "component";
     componentNode: string;
     componentIndex: number;
 }
@@ -43,7 +43,7 @@ type ComponentNode = ComponentOpen | ComponentClose | ComponentSelfClosing;
  * Check if an arbitrary AST node is a {@link ComponentNode}
  */
 const isComponentNode = (node: Node): node is ComponentNode =>
-    node.type === "html" &&
+    node.type === "component" &&
     "componentNode" in node &&
     (node.componentNode === "open" || node.componentNode === "close" || node.componentNode === "self-closing") &&
     "componentIndex" in node &&
@@ -77,7 +77,12 @@ const htmlNodesToComponentNodes = (tree: Node) => {
     // clone the tree to avoid modifying original
     const clone = structuredClone(tree);
 
-    visit(clone, "html", (node: HTML) => {
+    visit(clone, "html", (node: HTML, index, parent) => {
+        // only process if the node is a child
+        if (!parent) {
+            return visit.CONTINUE;
+        }
+
         const match = node.value.match(/^<(?<closing>\/)?c(?<componentIndex>\d+)(?<selfClosing>\/)?>$/);
         if (!match || !match.groups) {
             return visit.CONTINUE;
@@ -87,12 +92,13 @@ const htmlNodesToComponentNodes = (tree: Node) => {
         const closing = match.groups.closing !== undefined;
         const selfClosing = match.groups.selfClosing !== undefined;
 
-        const componentNode = selfClosing ? "self-closing" : closing ? "close" : "open";
-
-        // mutate the node to make it a ComponentNode
-        // (this is safe because we're working on a clone)
-        (node as BaseComponentNode).componentNode = componentNode;
-        (node as BaseComponentNode).componentIndex = Number(componentIndex);
+        // replace the node with a ComponentNode
+        const componentNode: ComponentNode = {
+            type: "component",
+            componentNode: selfClosing ? "self-closing" : closing ? "close" : "open",
+            componentIndex: parseInt(componentIndex),
+        };
+        parent.children.splice(index, 1, componentNode);
 
         return visit.CONTINUE;
     });
@@ -111,13 +117,32 @@ const componentNodesToHtmlNodes = (tree: Node) => {
     // clone the tree to avoid modifying original
     const clone = structuredClone(tree);
 
-    visit(clone, "html", (node: HTML) => {
-        if (isComponentNode(node)) {
-            // @ts-expect-error - remove component data from the node so it's no longer a Component
-            delete node.componentNode;
-            // @ts-expect-error - remove component data from the node so it's no longer a Component
-            delete node.componentIndex;
+    visit(clone, (node: Node, index, parent) => {
+        // only process if the node is a child
+        if (!parent) {
+            return visit.CONTINUE;
         }
+
+        if (!isComponentNode(node)) {
+            return visit.CONTINUE;
+        }
+
+        // replace the node with a regular HTML node
+        const htmlValue = (() => {
+            switch (node.componentNode) {
+                case "open":
+                    return `<c${node.componentIndex}>`;
+                case "close":
+                    return `</c${node.componentIndex}>`;
+                case "self-closing":
+                    return `<c${node.componentIndex}/>`;
+            }
+        })();
+        const htmlNode: HTML = {
+            type: "html",
+            value: htmlValue,
+        };
+        parent.children.splice(index, 1, htmlNode);
 
         return visit.CONTINUE;
     });
@@ -154,14 +179,14 @@ const componentNodesToHtmlNodes = (tree: Node) => {
  * ]
  * ```
  *
- * @returns A tuple containing the transformed mdast tree and the substituted component.
+ * @returns A tuple containing the transformed mdast tree and the substituted components.
  */
-export const toComponents = (tree: Node) => {
+export const toComponents = <C>(tree: Node, mapNodeToComponentData: (node: Node) => C | null): readonly [Node, C[]] => {
     // copy the tree to avoid modifying original
     const clone = structuredClone(tree);
 
     // sequence of components which are substituted
-    const components = [] as ComponentList;
+    const components = [] as C[];
 
     visit(clone, (node, index, parent) => {
         // only process if the node is a child
@@ -192,14 +217,12 @@ export const toComponents = (tree: Node) => {
 
         if ("children" in node && Array.isArray(node.children) && node.children.length > 0) {
             const open: ComponentOpen = {
-                type: "html",
-                value: `<c${componentIndex}>`,
+                type: "component",
                 componentNode: "open",
                 componentIndex,
             };
             const close: ComponentClose = {
-                type: "html",
-                value: `</c${componentIndex}>`,
+                type: "component",
                 componentNode: "close",
                 componentIndex,
             };
@@ -208,8 +231,7 @@ export const toComponents = (tree: Node) => {
         // otherwise use a self-closing tag
         else {
             const selfClosing: ComponentSelfClosing = {
-                type: "html",
-                value: `<c${componentIndex}/>`,
+                type: "component",
                 componentNode: "self-closing",
                 componentIndex,
             };
@@ -219,35 +241,38 @@ export const toComponents = (tree: Node) => {
         // replace the node with node span
         parent.children.splice(index, 1, ...span);
 
-        // return the same index to process all replaced nodes
-        // (this accounts for nested components)
-        return index;
+        // make sure to avoid processing children of the original node
+        return visit.SKIP;
     });
 
     // obtain plain mdast tree by backconverting any remaining Component nodes into regular HTML nodes
     // (this should only be the case if the component was not replaced due to missing closing tag or missing component data)
     const cloneNoComponents = componentNodesToHtmlNodes(clone);
 
-    return [cloneNoComponents, components] as const;
+    return [cloneNoComponents, components];
 };
 
 /**
  * Backconverts the escaped AST (parsed from a string with components) to the original AST
  * using previosly substituted components.
  */
-export const fromComponents = (tree: Node, components: ComponentList) => {
+export const fromComponents = <C>(
+    tree: Node,
+    components: C[],
+    mapComponentDataToNode: (componentData: C) => Node,
+): Node => {
     // create a transformed copy of the AST
     // discovering and transforming any HTML node that matches the component node format
     const cloneWithComponents = htmlNodesToComponentNodes(tree);
 
-    visit(cloneWithComponents, "html", (node: HTML, index, parent) => {
+    visit(cloneWithComponents, (node: Node, index, parent) => {
         // only process if the node is a child
         if (!parent) {
             return visit.CONTINUE;
         }
 
         // ensure this is either a component open or self closing node
-        if (!isComponentNode(node) || node.componentNode === "close") {
+        if (!isComponentNode(node)) {
             return visit.CONTINUE;
         }
 
@@ -268,9 +293,7 @@ export const fromComponents = (tree: Node, components: ComponentList) => {
             // replace the self-closing HTML component with the original mdast node
             parent.children.splice(index, 1, originalNode);
 
-            // return the same index to process all replaced nodes
-            // (this accounts for nested components)
-            return index;
+            return visit.CONTINUE;
         }
 
         // otherwise it's an opening node, so locate the matching closing node
@@ -303,10 +326,15 @@ export const fromComponents = (tree: Node, components: ComponentList) => {
         originalNode.children = parent.children.slice(index + 1, closingNodeIndex) as Content[];
         parent.children.splice(index, closingNodeIndex - index + 1, originalNode);
 
-        // return the same index to process all replaced nodes
-        // (this accounts for nested components)
+        // make sure to descend into the children of the newly inserted node
+        // (note this does not suffer from a bug of traversing children of the original node,
+        // because this node we've just replaced did not have any children to begin with)
         return index;
     });
 
-    return cloneWithComponents;
+    // backconversion is complete, so remove any remaining Component nodes
+    // in case they were not replaced due to missing closing tag or missing component data
+    const cloneNoComponents = componentNodesToHtmlNodes(cloneWithComponents);
+
+    return cloneNoComponents;
 };
