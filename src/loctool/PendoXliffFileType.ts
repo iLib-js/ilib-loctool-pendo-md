@@ -1,4 +1,6 @@
-import { File, FileType, TranslationSet } from "loctool";
+import type { FileType, Project, API, TranslationSet } from "loctool";
+import path from "node:path";
+import PendoXliffFile from "./PendoXliffFile";
 
 /**
  * XLIFF file exported from Pendo for translation.
@@ -18,40 +20,131 @@ import { File, FileType, TranslationSet } from "loctool";
  * data as reference.
  */
 export class PendoXliffFileType implements FileType {
-    readonly type = "pendo-xliff";
+    constructor(project: Project, loctoolAPI: API) {
+        this.project = project;
+        this.loctoolAPI = loctoolAPI;
+    }
+
+    /**
+     * Reference to the loctool {@link Project} instance which uses this file type.
+     */
+    private readonly project: Project;
+
+    /**
+     * Additional functionality provided by loctool to the plugin.
+     */
+    private readonly loctoolAPI: API;
+
+    private static readonly extensions = [".xliff", ".xlf"];
+    getExtensions(): string[] {
+        return PendoXliffFileType.extensions;
+    }
+
+    /**
+     * Check if supplied file path has an extension matching this file type (see {@link extensions}).
+     */
+    private static hasValidExtension(filePath: string): boolean {
+        const extension = path.extname(filePath).toLowerCase();
+        return PendoXliffFileType.extensions.includes(extension);
+    }
+
+    /** human-readable file type name */
+    private static readonly name = "Pendo XLIFF";
+    name(): string {
+        return PendoXliffFileType.name;
+    }
+
+    /**
+     * [XLIFF datatype](https://docs.oasis-open.org/xliff/v1.2/os/xliff-core.html#datatype)
+     * identifier for Pendo markdown strings.
+     */
+    public static readonly datatype = "x-pendo-markdown";
+    getDataType(): string {
+        // strings in XLIFFs exported from Pendo are markdown with custom extensions
+        return PendoXliffFileType.datatype;
+    }
+
+    getDataTypes(): Record<string, string> | undefined {
+        // use defaults
+        return undefined;
+    }
+
+    /**
+     * Per convention it seems that source locale should always come from the project
+     */
+    get sourceLocale() {
+        return this.project.getSourceLocale();
+    }
 
     handles(pathName: string): boolean {
-        throw new Error("Method not implemented.");
+        // files should have been filtered by extension before calling this method,
+        // but following the convention like here: https://github.com/iLib-js/loctool/blob/development/lib/MarkdownFileType.js#L61
+        // note: this could probably conflict with custom path mappings defined in project config
+        // if they define different extensions
+        if (!PendoXliffFileType.hasValidExtension(pathName)) {
+            return false;
+        }
+
+        // TODO: carry over the "already localized" check since it seems to be expected per convention
+
+        return true;
     }
-    getExtensions(): string[] {
-        throw new Error("Method not implemented.");
-    }
-    name(): string {
-        throw new Error("Method not implemented.");
-    }
+
     write(): void {
-        throw new Error("Method not implemented.");
+        // no-op
+        // per loctool convention, when localized files are written individually
+        // there is no need to implement this method
+        // (which is meant to write out aggregated resources - whatever that means);
+        // this plugin intends to take a source XLIFF file on the input and from it
+        // parse resources which have the source string transformed (markdown syntax escaped)
+        // while on the output, it should produce one copy of the original XLIFF file
+        // for each target locale (with the translated string backconverted from the escaped syntax
+        // using the original non-escaped source string as a reference)
     }
-    newFile(path: string): File {
-        throw new Error("Method not implemented.");
+
+    /**
+     * Collection of instantiated {@link PendoXliffFile}s by this file type.
+     *
+     * See {@link getExtracted} on why this is needed.
+     */
+    private readonly files: Record<string, PendoXliffFile> = {};
+
+    newFile(path: string): PendoXliffFile {
+        if (!this.files[path]) {
+            this.files[path] = new PendoXliffFile(path, this.project, this.loctoolAPI);
+        }
+        return this.files[path];
     }
-    getDataType(): string {
-        throw new Error("Method not implemented.");
-    }
-    getDataTypes(): Record<string, string> | undefined {
-        throw new Error("Method not implemented.");
-    }
+
     getExtracted(): TranslationSet {
-        throw new Error("Method not implemented.");
+        // this should ouput a translationset with merged resources from all files
+        // which fit this filetype;
+        // note: this means that the instance of the filetype class has to keep track of all files it
+        // has processed (i.e. each {@link newFile} call should add the file to a list)
+
+        const translationSet = this.loctoolAPI.newTranslationSet(this.sourceLocale);
+
+        for (const path in this.files) {
+            const file = this.files[path];
+            translationSet.addSet(file.getTranslationSet());
+        }
+
+        return translationSet;
     }
+
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- noop, see comment in method
     addSet(set: TranslationSet): void {
-        throw new Error("Method not implemented.");
+        // no-op
+        // it's not clear why would the filetype need to add a set of translations to itself
+        // given that per the getExtracted method, sets should come from the files
     }
+
     getNew(): TranslationSet {
-        throw new Error("Method not implemented.");
+        // not sure how this differs from getExtracted
+        return this.getExtracted();
     }
     getPseudo(): TranslationSet {
-        throw new Error("Method not implemented.");
+        return this.loctoolAPI.newTranslationSet(this.sourceLocale);
     }
 }
 
