@@ -25,10 +25,68 @@ declare module "loctool" {
      */
     type ResTypeIosString = "iosString";
 
-    type ResType = ResTypeString | ResTypeArray | ResTypePlural | ResTypeContextString | ResTypeIosString;
+    /**
+     * Possible type identifiers for a resource.
+     *
+     * Possible values per
+     * [`API.newResource` method documentation](https://github.com/iLib-js/loctool/blob/201b56fc5a524ae578b55f582ff9b309010b4c3c/docs/Plugins.md#api-class)
+     *
+     * Note that implementation of {@link API.newResource} seems to allow for the factory to be extended - so this type
+     * should then be extended as well, see {@link ResourceFactoryMap} documentation.
+     */
+    interface ResTypeMap {
+        string: ResTypeString;
+        array: ResTypeArray;
+        plural: ResTypePlural;
+        contextString: ResTypeContextString;
+        iosString: ResTypeIosString;
+    }
 
-    type NewResourceOptions = {
-        resType: ResType;
+    type ResType = ResTypeMap[keyof ResTypeMap];
+
+    /**
+     * Defines possible return types of the resource factory method {@link API.newResource}
+     * per https://github.com/iLib-js/loctool/blob/201b56fc5a524ae578b55f582ff9b309010b4c3c/lib/ResourceFactory.js
+     *
+     * Note that the implementation linked above seems to allow for the factory to be extended - so this type should then be extended as well:
+     * ```typescript
+     * // define const identifier
+     * type ResTypeCustom = "myCustomType";
+     *
+     * declare module "loctool" {
+     *     // insert it into known resource type identifiers
+     *     interface ResTypeMap {
+     *         myCustomType: ResTypeCustom;
+     *     }
+     *     // and known return types of the resource factory method
+     *     interface ResourceFactoryMap {
+     *         myCustomType: ResTypeCustom;
+     *     }
+     * }
+     * // implement the custom resource class
+     * class ResourceCustom extends Resource {
+     *     // use the defined type identifier
+     *     getType(): ResTypeCustom {
+     *         return "myCustomType";
+     *     }
+     * }
+     * ```
+     */
+    interface ResourceFactoryMap {
+        string: ResourceString;
+        array: ResourceArray;
+        plural: ResourcePlural;
+    }
+
+    /**
+     * Concrete return type of the {@link API.newResource} method
+     * inferred based on the value provided to {@link NewResourceOptions.resType}.
+     */
+    type InstantiatedResource<T extends ResType> = ResourceFactoryMap[T];
+
+    type NewResourceOptions<T extends ResType> = {
+        /** Type of resource to instantiate */
+        resType: T;
 
         /** name of the project containing this resource */
         project?: string;
@@ -76,7 +134,7 @@ declare module "loctool" {
         /**
          * data type used in xliff files to identify strings
          * as having been extracted from this type of file
-         * */
+         */
         datatype?: string;
 
         /** numerical index that gives the order of the strings in the source file. */
@@ -94,7 +152,7 @@ declare module "loctool" {
          *
          * @returns an instance of a resource subclass
          */
-        newResource(options: NewResourceOptions): Resource;
+        newResource<T extends ResType>(options: NewResourceOptions<T>): InstantiatedResource<T>;
 
         /**
          * Create a new translation set. A translation set is
