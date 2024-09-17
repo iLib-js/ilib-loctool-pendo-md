@@ -25,6 +25,15 @@ declare module "loctool" {
 
     type ResourceState = "new" | "translated" | "accepted";
 
+    type ResourceTypeString = "string";
+    type ResourceTypeArray = "array";
+    type ResourceTypePlural = "plural";
+    /**
+     * Possible type identifiers for a resource as defined in Resource.getType() in
+     * https://github.com/iLib-js/loctool/blob/201b56fc5a524ae578b55f582ff9b309010b4c3c/docs/Plugins.md#resource
+     */
+    type ResourceType = ResourceTypeString | ResourceTypeArray | ResourceTypePlural;
+
     export class Resource {
         /**
          * @class Represents a resource from a resource file or
@@ -48,12 +57,11 @@ declare module "loctool" {
         getKey(): string;
 
         /**
-         * Return the resource type of this resource. This is one of
-         * string, array, or plural.
+         * Return the resource type of this resource.
          *
          * @returns the resource type of this resource
          */
-        getType(): string;
+        getType(): ResourceType;
 
         /**
          * Return the data type of this resource.
