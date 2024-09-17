@@ -60,6 +60,7 @@
     },
     "dependencies": {
         "@ungap/structured-clone": "^1.2.0",
+        "ilib-xliff": "^1.1.0",
         "mdast-util-from-markdown": "^0",
         "mdast-util-gfm-strikethrough": "^0",
         "mdast-util-to-markdown": "^0",
