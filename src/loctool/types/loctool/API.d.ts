@@ -76,6 +76,8 @@ declare module "loctool" {
         string: ResourceString;
         array: ResourceArray;
         plural: ResourcePlural;
+        iosString: ResourceString;
+        contextString: ResourceString;
     }
 
     /**
@@ -84,7 +86,7 @@ declare module "loctool" {
      */
     type InstantiatedResource<T extends ResType> = ResourceFactoryMap[T];
 
-    type NewResourceOptions<T extends ResType> = {
+    type BaseResourceOptions<T extends ResType> = {
         /** Type of resource to instantiate */
         resType: T;
 
@@ -96,21 +98,6 @@ declare module "loctool" {
 
         /** the source locale of this resource */
         sourceLocale?: string;
-
-        /**
-         * the source string for the "string", "iosString"
-         * and "contextString" resTypes
-         */
-        source?: string;
-
-        /** the source array for the "array" resType */
-        sourceArray?: string[];
-
-        /**
-         * an object mapping CLDR plural categories to
-         * source strings for the "plural" resType
-         */
-        sourcePlurals?: Record<string, string>;
 
         /**
          * boolean value which is true when the key is
@@ -140,6 +127,37 @@ declare module "loctool" {
         /** numerical index that gives the order of the strings in the source file. */
         index?: number;
     };
+
+    type StringResourceOptions = {
+        /**
+         * the source string for the "string", "iosString"
+         * and "contextString" resTypes
+         */
+        source?: string;
+    };
+
+    type ArrayResourceOptions = {
+        /** the source array for the "array" resType */
+        sourceArray?: string[];
+    };
+
+    type PluralResourceOptions = {
+        /**
+         * an object mapping CLDR plural categories to
+         * source strings for the "plural" resType
+         */
+        sourcePlurals?: Record<string, string>;
+    };
+
+    interface ResourceOptionsMap {
+        string: StringResourceOptions;
+        iosString: StringResourceOptions;
+        contextString: StringResourceOptions;
+        array: ArrayResourceOptions;
+        plural: PluralResourceOptions;
+    }
+
+    type NewResourceOptions<T extends ResType = ResType> = BaseResourceOptions<T> & ResourceOptionsMap[T];
 
     type ResBundle = unknown;
     type APIUtils = unknown;
