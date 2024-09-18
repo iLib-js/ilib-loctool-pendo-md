@@ -114,7 +114,7 @@ declare module "loctool" {
          * @returns the array of Resources, or undefined if the
          * retrieval did not find any resources that match or there was some error
          */
-        getBy(options: Criteria): R[] | undefined;
+        getBy(options: ResourceProps<R>): R[] | undefined;
 
         /**
          * Return an array of all the project names in the database.

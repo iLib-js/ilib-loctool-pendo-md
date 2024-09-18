@@ -1,29 +1,10 @@
 // per https://github.com/iLib-js/loctool/blob/201b56fc5a524ae578b55f582ff9b309010b4c3c/docs/Plugins.md#resource
 declare module "loctool" {
-    type ResourceProps = {
-        /** the project that this resource is in */
-        project: string;
-        /**
-         * The context for this resource, such as "landscape mode", or "7200dp",
-         * which differentiates it from the base resource that has no special context.
-         * The default if this property is not specified is undefined, meaning no context.
-         */
-        context?: string;
-        /** the locale of the source resource. */
-        sourceLocale: string;
-        /** the locale of the target resource. */
-        targetLocale: string;
-        /** the unique key of this string, which should include the context of the string */
-        key: string;
-        /** pathName to the file where the string was extracted from */
-        pathName: string;
-        /** true if the key was generated based on the source text */
-        autoKey: boolean;
-        /** current state of the resource (ie. "new", "translated", or "accepted") */
-        state: ResourceState;
-    };
-
     type ResourceState = "new" | "translated" | "accepted";
+
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type -- we don't want ANY functions here
+    type NonFunctionPropertyNames<T> = { [K in keyof T]: T[K] extends Function ? never : K }[keyof T];
+    type ResourceProps<R extends Resource = Resource> = Pick<R, NonFunctionPropertyNames<R>>;
 
     type ResourceTypeString = "string";
     type ResourceTypeArray = "array";
@@ -34,7 +15,7 @@ declare module "loctool" {
      */
     type ResourceType = ResourceTypeString | ResourceTypeArray | ResourceTypePlural;
 
-    export class Resource {
+    export abstract class Resource {
         /**
          * @class Represents a resource from a resource file or
          * extracted from the code.
@@ -42,12 +23,18 @@ declare module "loctool" {
          */
         constructor(props: ResourceProps);
 
+        /** the project that this resource is in */
+        project: string;
+
         /**
          * Return the project that this resource was found in.
          *
          * @returns the project of this resource
          */
         getProject(): string;
+
+        /** the unique key of this string, which should include the context of the string */
+        key: string;
 
         /**
          * Return the unique key of this resource.
@@ -70,6 +57,9 @@ declare module "loctool" {
          */
         getDataType(): string;
 
+        /** true if the key was generated based on the source text */
+        autoKey: boolean;
+
         /**
          * Return true if the key of this resource was automatically generated,
          * and false if it was an explicit key.
@@ -80,12 +70,22 @@ declare module "loctool" {
         getAutoKey(): boolean;
 
         /**
+         * The context for this resource, such as "landscape mode", or "7200dp",
+         * which differentiates it from the base resource that has no special context.
+         * The default if this property is not specified is undefined, meaning no context.
+         */
+        context?: string;
+
+        /**
          * Return the context of this resource, or undefined if there
          * is no context.
          * @returns the context of this resource, or undefined if there
          * is no context.
          */
         getContext(): string | undefined;
+
+        /** the locale of the source resource. */
+        sourceLocale: string;
 
         /**
          * Return the source locale of this resource, or undefined if there
@@ -101,6 +101,9 @@ declare module "loctool" {
          */
         setSourceLocale(locale: string): void;
 
+        /** the locale of the target resource. */
+        targetLocale: string;
+
         /**
          * Return the target locale of this resource, or undefined if the resource
          * is a source-only resource.
@@ -114,6 +117,9 @@ declare module "loctool" {
          * @param locale the target locale of this resource
          */
         setTargetLocale(locale: string): void;
+
+        /** current state of the resource (ie. "new", "translated", or "accepted") */
+        state: ResourceState;
 
         /**
          * Return the state of this resource. This is a string that gives the
@@ -132,6 +138,9 @@ declare module "loctool" {
          * @param state the state of this resource
          */
         setState(state: ResourceState): void;
+
+        /** pathName to the file where the string was extracted from */
+        pathName: string;
 
         /**
          * Return the original path to the file from which this resource was

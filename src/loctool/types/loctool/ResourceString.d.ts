@@ -4,6 +4,12 @@ declare module "loctool" {
         getType(): ResourceTypeString;
 
         /**
+         * the source string for the "string", "iosString"
+         * and "contextString" resTypes
+         */
+        source?: string;
+
+        /**
          * Return the source string written in the source
          * locale of this resource string.
          *
@@ -19,6 +25,7 @@ declare module "loctool" {
          */
         setSource(str: string): string;
 
+        target?: string;
         /**
          * Return the string written in the target locale.
          *
