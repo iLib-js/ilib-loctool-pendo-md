@@ -2,7 +2,7 @@ import type { API, File, Project, ResourceString, TranslationSet } from "loctool
 import { type TranslationUnit, Xliff } from "ilib-xliff";
 import path from "node:path";
 import fs from "node:fs";
-import { convert } from "../markdown/convert/convert";
+import { backconvert, convert } from "../markdown/convert";
 
 export class PendoXliffFile implements File {
     /**
@@ -67,11 +67,15 @@ export class PendoXliffFile implements File {
         return path.join(dirname, `${nameWithLocale}.${extname}`);
     }
 
+    private static loadXliff(path: string): Xliff {
+        const content = fs.readFileSync(path, "utf-8");
+        const xliff = new Xliff();
+        xliff.deserialize(content);
+        return xliff;
+    }
+
     extract(): void {
-        // load the source XLIFF file into memory
-        const content = fs.readFileSync(this.path, "utf-8");
-        this.xliff = new Xliff();
-        this.xliff.deserialize(content);
+        this.xliff = PendoXliffFile.loadXliff(this.path);
     }
 
     /**
@@ -99,6 +103,10 @@ export class PendoXliffFile implements File {
         });
     }
 
+    /**
+     * Output source strings from the original Pendo XLIFF file as loctool resources
+     * with escaped markdown syntax.
+     */
     getTranslationSet() {
         const translationUnits = this.xliff
             .getTranslationUnits()
@@ -131,13 +139,51 @@ export class PendoXliffFile implements File {
         return translationSet;
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- implementation pending
+    /**
+     * Given a set of translations provided by loctool, for each locale
+     * write out a localized Pendo XLIFF file which is a copy of the source Pendo XLIFF but
+     * with applicable translated strings inserted.
+     */
     localize(translations: TranslationSet, locales: string[]): void {
-        throw new Error("Method not implemented.");
+        for (const locale of locales) {
+            const translationsForLocale = translations
+                .getAll()
+                .filter(
+                    (resource) => resource.getType() === "string" && resource.getTargetLocale() === locale,
+                ) as ResourceString[];
+
+            // load a copy of the source xliff - don't mutate the file that's already loaded
+            const xliff = PendoXliffFile.loadXliff(this.path);
+            // mutate the translation units in the copy
+            for (const unit of xliff.getTranslationUnits()) {
+                const translation = translationsForLocale.find((resource) => resource.getKey() === unit.key);
+                if (!translation) {
+                    // @TODO warn about missing translation
+                    continue;
+                }
+
+                // use the source string as reference to reinsert the original markdown syntax
+                // into the localized string
+                // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                const [_, referenceComponentList] = convert(unit.source);
+                const target = translation.getTarget();
+                try {
+                    const unescapedTaget = backconvert(target, referenceComponentList);
+                    // update the target string in the xliff
+                    unit.target = unescapedTaget;
+                } catch {
+                    // @TODO log backconversion error
+                }
+            }
+
+            // write the localized xliff file
+            const localizedPath = this.getLocalizedPath(locale);
+            fs.writeFileSync(localizedPath, xliff.serialize(), { encoding: "utf-8" });
+        }
     }
 
     write(): void {
-        throw new Error("Method not implemented.");
+        // no-op, as the localized files are written in the localize method
     }
 }
 
