@@ -20,12 +20,19 @@ declare module "loctool" {
 
     export class ResourcePlural extends Resource {
         /**
+         * an object mapping CLDR plural categories to
+         * source strings for the "plural" resType
+         */
+        sourcePlurals?: Record<string, string>;
+
+        /**
          * Return the source plurals hash of this plurals resource.
          * The hash maps the plural category to the source string
          * for that category.
          */
         getSourcePlurals(): Record<PluralCategory, string>;
 
+        targetPlurals?: Record<string, string>;
         /**
          * Return the target plurals hash of this plurals resource.
          * The hash maps the plural category to the translation of

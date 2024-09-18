@@ -3,6 +3,9 @@ declare module "loctool" {
     export class ResourceArray extends Resource {
         getType(): ResourceTypeArray;
 
+        /** the source array for the "array" resType */
+        sourceArray?: string[];
+
         /**
          * Return the array of source strings for this resource.
          *
@@ -19,6 +22,7 @@ declare module "loctool" {
          */
         setSourceArray(arr: string[]): void;
 
+        targetArray?: string[];
         /**
          * Return the array of target strings for this resource. The
          * target string at array position N corresponds to the source
