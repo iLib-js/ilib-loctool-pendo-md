@@ -1,7 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-declaration-merging --
- * Intentional declaration merging per https://github.com/microsoft/TypeScript/issues/340
- * to carry over all properties and jsdoc from props definition to the class definition
- */
 // per https://github.com/iLib-js/xliff/blob/f733c2a65a4215075c8a0b4f0c75aec289de6ae1/src/TranslationUnit.js
 declare module "ilib-xliff" {
     type ResTypeString = "string";
@@ -17,7 +13,9 @@ declare module "ilib-xliff" {
     type Project = unknown;
     type Location = unknown;
 
-    interface RequiredTranslationUnitProps {
+    export type RequiredTranslationUnitProps = "source" | "sourceLocale" | "key" | "file" | "project";
+
+    export class TranslationUnit {
         /** Source text for this unit */
         source: string;
         /** Source locale spec for this unit */
@@ -28,31 +26,28 @@ declare module "ilib-xliff" {
         file: string;
         /** Project that this string/unit is part of */
         project: Project;
-    }
-
-    interface OptionalTranslationUnitProps {
         /** Target text for this unit */
-        target: string;
+        target: string | undefined;
         /** Target locale spec for this unit */
-        targetLocale: string;
+        targetLocale: string | undefined;
         /** Type of this resource */
-        resType: ResType;
+        resType: ResType | undefined;
         /** State of the current unit */
-        state: UnitState;
+        state: UnitState | undefined;
         /** Translator's comment for this unit */
-        comment: string;
+        comment: string | undefined;
         /** Source of the data of this unit */
-        datatype: string;
+        datatype: string | undefined;
         /** Flavor that this string comes from */
-        flavor: string;
+        flavor: string | undefined;
         /** Flag that tells whether to translate this unit */
-        translate: boolean;
+        translate: boolean | undefined;
         /** Line and character location of the start of this translation unit in the xml representation of the file */
-        location: Location;
-    }
+        /* eslint-disable @typescript-eslint/no-redundant-type-constituents --
+         * This is to denote an optional property even after Location type is fixed
+         */
+        location: Location | undefined;
 
-    interface TranslationUnit extends RequiredTranslationUnitProps, Partial<OptionalTranslationUnitProps> {}
-    class TranslationUnit {
         /**
          * Construct a new translation unit
          *
@@ -64,7 +59,7 @@ declare module "ilib-xliff" {
          *     source locale and no target text, but different target locales.
          */
         // note: excluded the undefined options from typedef since this initializes an empty object, which is useless
-        constructor(options: RequiredTranslationUnitProps & Partial<OptionalTranslationUnitProps>);
+        constructor(options: Required<Pick<TranslationUnit, RequiredTranslationUnitProps>> & Partial<TranslationUnit>);
 
         /**
          * Return a shallow copy of this translation unit.
