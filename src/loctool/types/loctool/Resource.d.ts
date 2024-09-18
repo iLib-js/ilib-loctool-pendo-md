@@ -201,7 +201,7 @@ declare module "loctool" {
          * the cloned object
          * @returns a clone of this resource
          */
-        clone(overrides: Partial<ResourceProps>): Resource;
+        clone(overrides?: Partial<ResourceProps>): Resource;
 
         /**
          * Return true if the other resource contains the exact same resource as
