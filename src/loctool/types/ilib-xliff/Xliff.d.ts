@@ -2,6 +2,7 @@
 declare module "ilib-xliff" {
     export class Xliff {
         deserialize(content: string): void;
+        serialize(): string;
         getTranslationUnits(): TranslationUnit[];
     }
 }
