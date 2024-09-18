@@ -206,7 +206,7 @@ declare module "loctool" {
          * locale is used.
          * @returns a new translation set instance
          */
-        newTranslationSet(sourceLocale?: string): TranslationSet;
+        newTranslationSet<R extends Resource = Resource>(sourceLocale?: string): TranslationSet<R>;
 
         /**
          * Object containing some utility functions and data that the

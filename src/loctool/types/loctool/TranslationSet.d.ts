@@ -2,7 +2,7 @@
 declare module "loctool" {
     type Criteria = unknown;
 
-    export class TranslationSet {
+    export class TranslationSet<R extends Resource = Resource> {
         /**
          * Get a resource by its hashkey.
          *
@@ -10,7 +10,7 @@ declare module "loctool" {
          * @returns a resource corresponding to the hashkey, or
          * undefined if there is no resource with that key
          */
-        get(hashkey: string): Resource | undefined;
+        get(hashkey: string): R | undefined;
 
         /**
          * Get a resource by its clean string hashkey.
@@ -19,7 +19,7 @@ declare module "loctool" {
          * @returns a resource corresponding to the hashkey, or undefined if there is no
          * resource with that key
          */
-        getClean(hashkey: string): Resource | undefined;
+        getClean(hashkey: string): R | undefined;
 
         /**
          * Get a resource by its source string and context. The source string must be written
@@ -36,7 +36,7 @@ declare module "loctool" {
          * @returns a resource corresponding to the source string, or
          * undefined if there is no resource with that source
          */
-        getBySource(source: string, context?: string): Resource | undefined;
+        getBySource(source: string, context?: string): R | undefined;
 
         /**
          * Return all resources in this set.
@@ -44,7 +44,7 @@ declare module "loctool" {
          * @returns an array of resources in this set,
          * possibly empty
          */
-        getAll(): Resource[];
+        getAll(): R[];
 
         /**
          * Add a resource to this set. If this resource has the same key
@@ -53,14 +53,14 @@ declare module "loctool" {
          *
          * @param resource a resource to add to this set
          */
-        add(resource: Resource): void;
+        add(resource: R): void;
 
         /**
          * Add every resource in the given array to this set.
          * @param resources an array of resources to add
          * to this set
          */
-        addAll(resources: Resource[]): void;
+        addAll(resources: R[]): void;
 
         /**
          * Add every resource in the given translation set to this set,
@@ -69,7 +69,7 @@ declare module "loctool" {
          * @param set an set of resources to add
          * to this set
          */
-        addSet(set: TranslationSet): void;
+        addSet(set: TranslationSet<R>): void;
 
         /**
          * Return the number of unique resources in this set.
@@ -106,7 +106,7 @@ declare module "loctool" {
          * @returns true if the resource was removed successfully
          * and false otherwise
          */
-        remove(resource: Resource): boolean;
+        remove(resource: R): boolean;
 
         /**
          * Get a resource by the given criteria.
@@ -114,7 +114,7 @@ declare module "loctool" {
          * @returns the array of Resources, or undefined if the
          * retrieval did not find any resources that match or there was some error
          */
-        getBy(options: Criteria): Resource[] | undefined;
+        getBy(options: Criteria): R[] | undefined;
 
         /**
          * Return an array of all the project names in the database.
@@ -169,6 +169,6 @@ declare module "loctool" {
          * @returns the differences between the other
          * set and this one
          */
-        diff(other: TranslationSet): TranslationSet;
+        diff<OtherR extends Resource = Resource>(other: TranslationSet<OtherR>): TranslationSet<R & OtherR>;
     }
 }
