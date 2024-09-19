@@ -4,4 +4,4 @@ import PendoXliffFileType from "./loctool/PendoXliffFileType";
 // loctool plugin entrypoint
 const plugin: Plugin = PendoXliffFileType;
 
-export default plugin;
+export = plugin;
