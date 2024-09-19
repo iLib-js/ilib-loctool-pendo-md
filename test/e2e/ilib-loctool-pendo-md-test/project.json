@@ -1,0 +1,74 @@
+{
+    "name": "ilib-loctool-pendo-md-test",
+    "id": "ilib-loctool-pendo-md-test",
+    "description": "translate strings exported from Pendo",
+    "projectType": "custom",
+    "sourceLocale": "en",
+    "resourceDirs": {
+        "markdown": "target"
+    },
+    "excludes": [],
+    "settings": {
+        "xliffsDir": "xliffs",
+        "locales": [
+            "bn-IN",
+            "zh-CN",
+            "zh-TW",
+            "da-DK",
+            "nl-NL",
+            "en-AU",
+            "en-CA",
+            "en-GB",
+            "fi-FI",
+            "fr-FR",
+            "fr-CA",
+            "de-DE",
+            "hi-IN",
+            "it-IT",
+            "ja-JP",
+            "ko-KR",
+            "nb-NO",
+            "pl-PL",
+            "pt-BR",
+            "ru-RU",
+            "es-ES",
+            "es-419",
+            "sv-SE",
+            "tr-TR"
+        ],
+        "localeMap": {
+            "bn-IN": "bn",
+            "zh-CN": "zh-CN",
+            "zh-TW": "zh-TW",
+            "da-DK": "da",
+            "nl-NL": "nl",
+            "en-AU": "en-AU",
+            "en-CA": "en-CA",
+            "en-GB": "en-GB",
+            "fi-FI": "fi",
+            "fr-FR": "fr",
+            "fr-CA": "fr-CA",
+            "de-DE": "de",
+            "hi-IN": "hi",
+            "it-IT": "it",
+            "ja-JP": "ja",
+            "ko-KR": "ko",
+            "nb-NO": "no",
+            "pl-PL": "pl",
+            "pt-BR": "pt-BR",
+            "ru-RU": "ru",
+            "es-ES": "es",
+            "es-419": "es-419",
+            "sv-SE": "sv",
+            "tr-TR": "tr"
+        },
+        "tap": {
+            "mappings": {
+                "**/*.i18n.yml": {
+                    "template": "[dir]/[locale].i18n.yml"
+                }
+            }
+        }
+    },
+    "plugins": ["ilib-loctool-pendo-md"]
+}
