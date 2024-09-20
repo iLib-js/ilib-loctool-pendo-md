@@ -146,6 +146,19 @@ export class PendoXliffFileType implements FileType {
     getPseudo(): TranslationSet {
         return this.loctoolAPI.newTranslationSet(this.sourceLocale);
     }
+
+    getResourceTypes() {
+        // per https://github.com/iLib-js/loctool/blob/development/lib/Project.js#L235-L244:
+        // even though not specified in the documeted plugin interface, loctool seems to expect
+        // either getResourceTypes() or registerDataTypes() to be present;
+        // getResourceTypes() is expected to return a mapping between `datatype` identifier and
+        // a class name registered in the ResourceFactory while registerDataTypes();
+        // based on existing implementations for built-in file types, it seems that
+        // registerDataTypes() does a similar thing but using internal access to the ResourceFactory
+        return {
+            [this.getDataType()]: "ResourceString",
+        } as const;
+    }
 }
 
 export default PendoXliffFileType;
