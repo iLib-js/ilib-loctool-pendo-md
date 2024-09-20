@@ -109,11 +109,13 @@ export class PendoXliffFileType implements FileType {
      */
     private readonly files: Record<string, PendoXliffFile> = {};
 
-    newFile(path: string): PendoXliffFile {
-        if (!this.files[path]) {
-            this.files[path] = new PendoXliffFile(path, this.project, this.loctoolAPI);
+    newFile(relativePath: string): PendoXliffFile {
+        if (this.files[relativePath]) {
+            throw new Error(`Attempt to create a file that already exists: ${relativePath}`);
         }
-        return this.files[path];
+        const absolutePath = path.join(this.project.getRoot(), relativePath);
+        this.files[relativePath] = new PendoXliffFile(absolutePath, this.project, this.loctoolAPI);
+        return this.files[relativePath];
     }
 
     getExtracted(): TranslationSet {

@@ -6,9 +6,9 @@ import { backconvert, convert } from "../markdown/convert";
 
 export class PendoXliffFile implements File {
     /**
-     * Path to the file being localized (i.e. source file).
+     * Absolute path to the file being localized (i.e. source file).
      */
-    private readonly path: string;
+    private readonly absolutePath: string;
 
     /**
      * Reference to the loctool {@link Project} instance which uses this file type.
@@ -37,8 +37,8 @@ export class PendoXliffFile implements File {
         return this._xliff;
     }
 
-    constructor(path: string, project: Project, loctoolAPI: API) {
-        this.path = path;
+    constructor(absolutePath: string, project: Project, loctoolAPI: API) {
+        this.absolutePath = absolutePath;
         this.project = project;
         this.loctoolAPI = loctoolAPI;
     }
@@ -55,16 +55,16 @@ export class PendoXliffFile implements File {
         // as of https://github.com/iLib-js/loctool/commit/285401359f923c1be11e7329b549ed11b4099637
         // since it seems to expect the plugin to write all localized files on its own
         // during {@link localize} method call
-        const dirname = path.dirname(this.path);
-        const extname = path.extname(this.path);
+
+        const { dir, name, ext: extWithDot } = path.parse(this.absolutePath);
 
         // remove optional trailing source locale from filename
-        const name = path.basename(this.path).replace(`_${this.sourceLocale}$`, "");
+        let localizedName = name.replace(new RegExp(`_${this.sourceLocale}$`), "");
 
         // output the localized file in the same directory as the source file
-        const nameWithLocale = name.length > 0 ? `${name}_${locale}` : locale;
+        localizedName = localizedName.length > 0 ? `${localizedName}_${locale}` : locale;
 
-        return path.join(dirname, `${nameWithLocale}.${extname}`);
+        return path.join(dir, `${localizedName}${extWithDot}`);
     }
 
     private static loadXliff(path: string): Xliff {
@@ -75,7 +75,7 @@ export class PendoXliffFile implements File {
     }
 
     extract(): void {
-        this.xliff = PendoXliffFile.loadXliff(this.path);
+        this.xliff = PendoXliffFile.loadXliff(this.absolutePath);
     }
 
     /**
@@ -153,7 +153,7 @@ export class PendoXliffFile implements File {
                 ) as ResourceString[];
 
             // load a copy of the source xliff - don't mutate the file that's already loaded
-            const xliff = PendoXliffFile.loadXliff(this.path);
+            const xliff = PendoXliffFile.loadXliff(this.absolutePath);
             // mutate the translation units in the copy
             for (const unit of xliff.getTranslationUnits()) {
                 const translation = translationsForLocale.find((resource) => resource.getKey() === unit.key);
