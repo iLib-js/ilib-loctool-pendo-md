@@ -69,16 +69,15 @@ export class PendoXliffFileType implements FileType {
         return undefined;
     }
 
-    /**
-     * Per convention it seems that source locale should always come from the project
-     */
     get sourceLocale() {
+        // Per convention (e.g. https://github.com/iLib-js/loctool/blob/285401359f923c1be11e7329b549ed11b4099637/lib/MarkdownFileType.js#L70)
+        // it seems that source locale should always come from the project
         return this.project.getSourceLocale();
     }
 
     handles(pathName: string): boolean {
         // files should have been filtered by extension before calling this method,
-        // but following the convention like here: https://github.com/iLib-js/loctool/blob/development/lib/MarkdownFileType.js#L61
+        // but following the convention like here: https://github.com/iLib-js/loctool/blob/285401359f923c1be11e7329b549ed11b4099637/lib/MarkdownFileType.js#L61
         // note: this could probably conflict with custom path mappings defined in project config
         // if they define different extensions
         if (!PendoXliffFileType.hasValidExtension(pathName)) {
@@ -150,7 +149,7 @@ export class PendoXliffFileType implements FileType {
     }
 
     getResourceTypes() {
-        // per https://github.com/iLib-js/loctool/blob/development/lib/Project.js#L235-L244:
+        // per https://github.com/iLib-js/loctool/blob/285401359f923c1be11e7329b549ed11b4099637/lib/Project.js#L235-L244:
         // even though not specified in the documeted plugin interface, loctool seems to expect
         // either getResourceTypes() or registerDataTypes() to be present;
         // getResourceTypes() is expected to return a mapping between `datatype` identifier and

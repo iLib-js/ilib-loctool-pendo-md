@@ -43,10 +43,9 @@ export class PendoXliffFile implements File {
         this.loctoolAPI = loctoolAPI;
     }
 
-    /**
-     * Per convention it seems that source locale should always come from the project
-     */
     get sourceLocale() {
+        // Per convention (e.g. https://github.com/iLib-js/loctool/blob/285401359f923c1be11e7329b549ed11b4099637/lib/MarkdownFile.js#L130)
+        // it seems that source locale should always come from the project
         return this.project.getSourceLocale();
     }
 
