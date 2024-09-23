@@ -149,6 +149,19 @@ export class PendoXliffFileType implements FileType {
         },
     };
 
+    /** Name of the project settings section specific for this plugin */
+    private static readonly pluginConfigSectionId = "pendo";
+
+    /**
+     * Retrieves a specific section of the current plugin configuration from project config.
+     */
+    private getPluginConfig(section: string) {
+        // config access based on https://github.com/iLib-js/ilib-loctool-tap-i18n/blob/7585e97497e16475bfce1fc034caf0c7716229e1/YamlFileType.js#L77-L84
+        // @ts-expect-error -- undocumented
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access -- undocumented
+        return this.project.settings?.[PendoXliffFileType.pluginConfigSectionId]?.[section] as unknown;
+    }
+
     /**
      * Provides template mappings for paths (from project config and default ones).
      *
@@ -168,10 +181,7 @@ export class PendoXliffFileType implements FileType {
      * }
      */
     private getPathMappings() {
-        // config access based on https://github.com/iLib-js/ilib-loctool-tap-i18n/blob/7585e97497e16475bfce1fc034caf0c7716229e1/YamlFileType.js#L77-L84
-        // @ts-expect-error -- undocumented
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access -- undocumented
-        const mappings: unknown = this.project.settings?.pendo?.mappings;
+        const mappings: unknown = this.getPluginConfig("mappings");
 
         if (!mappings) {
             return PendoXliffFileType.defaultPathMappings;
@@ -240,9 +250,26 @@ export class PendoXliffFileType implements FileType {
      * Given a target locale (as provided by loctool), return the locale that should be used in the output file.
      */
     private getOuputLocale(loctoolLocale: string): string {
-        // @TODO handle locale mapping
-        // and add note about the fact that the locale mapping should be handled
-        // by loctool rather than each plugin separately
+        // config access based on https://github.com/iLib-js/ilib-loctool-tap-i18n/blob/7585e97497e16475bfce1fc034caf0c7716229e1/YamlFileType.js#L77-L84
+        // except that localeMap is in root "settings" section rather than in the plugin-specific one
+        // @ts-expect-error -- undocumented
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access -- undocumented
+        const localeMap = this.project.settings?.localeMap as unknown;
+
+        // if there is a locale mapping, use it
+        if (
+            localeMap &&
+            typeof localeMap === "object" &&
+            loctoolLocale in localeMap &&
+            // @ts-expect-error -- undocumented
+            typeof localeMap[loctoolLocale] === "string" &&
+            // @ts-expect-error -- undocumented
+            localeMap[loctoolLocale].length > 0
+        ) {
+            // @ts-expect-error -- undocumented
+            return localeMap[loctoolLocale];
+        }
+
         return loctoolLocale;
     }
 
