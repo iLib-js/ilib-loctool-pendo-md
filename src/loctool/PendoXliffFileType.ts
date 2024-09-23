@@ -1,6 +1,7 @@
 import type { FileType, Project, API, TranslationSet, ResourceString } from "loctool";
 import path from "node:path";
 import PendoXliffFile, { type TUData } from "./PendoXliffFile";
+import micromatch from "micromatch";
 
 /**
  * XLIFF file exported from Pendo for translation.
@@ -40,14 +41,6 @@ export class PendoXliffFileType implements FileType {
         return PendoXliffFileType.extensions;
     }
 
-    /**
-     * Check if supplied file path has an extension matching this file type (see {@link extensions}).
-     */
-    private static hasValidExtension(filePath: string): boolean {
-        const extension = path.extname(filePath).toLowerCase();
-        return PendoXliffFileType.extensions.includes(extension);
-    }
-
     /** human-readable file type name */
     private static readonly name = "Pendo XLIFF";
     name(): string {
@@ -78,17 +71,28 @@ export class PendoXliffFileType implements FileType {
         return this.project.getSourceLocale();
     }
 
-    handles(pathName: string): boolean {
-        // files should have been filtered by extension before calling this method,
-        // but following the convention like here: https://github.com/iLib-js/loctool/blob/285401359f923c1be11e7329b549ed11b4099637/lib/MarkdownFileType.js#L61
-        // note: this could probably conflict with custom path mappings defined in project config
-        // if they define different extensions
-        if (!PendoXliffFileType.hasValidExtension(pathName)) {
+    handles(pathInProject: string): boolean {
+        // only pick files which match some path mapping
+        const pathMapping = this.getMappingForPath(pathInProject);
+        if (!pathMapping) {
             return false;
         }
 
-        // @TODO carry over the "already localized" check since it seems to be expected per convention
-        // @TODO load path template mappings from the project config
+        // per convention, only pick files which match project's source locale
+        // (this is done to avoid processing files which are already localized)
+        /* eslint-disable-next-line
+         @typescript-eslint/no-unsafe-assignment,
+         @typescript-eslint/no-unsafe-call,
+         @typescript-eslint/no-explicit-any,
+         @typescript-eslint/no-unsafe-member-access -- yet undocumented utility method,
+         signature based on https://github.com/iLib-js/ilib-loctool-tap-i18n/blob/7585e97497e16475bfce1fc034caf0c7716229e1/YamlFileType.js#L122 */
+        const fileLocale: string = (this.loctoolAPI.utils as any).getLocaleFromPath(
+            pathMapping.template,
+            pathInProject,
+        );
+        if (fileLocale !== this.sourceLocale) {
+            return false;
+        }
 
         return true;
     }
@@ -112,12 +116,12 @@ export class PendoXliffFileType implements FileType {
      */
     private readonly files: Record<string, PendoXliffFile> = {};
 
-    newFile(relativePath: string): PendoXliffFile {
-        if (this.files[relativePath]) {
-            throw new Error(`Attempt to create a file that already exists: ${relativePath}`);
+    newFile(pathInProject: string): PendoXliffFile {
+        if (this.files[pathInProject]) {
+            throw new Error(`Attempt to create a file that already exists: ${pathInProject}`);
         }
 
-        const absolutePath = path.join(this.project.getRoot(), relativePath);
+        const actualPath = path.join(this.project.getRoot(), pathInProject);
 
         // inject localized path generator, translation set creation and locale mapping
         // into the file instance capturing parameters from the current context where needed
@@ -126,31 +130,110 @@ export class PendoXliffFileType implements FileType {
         // (accessing loctool API, project, configuration etc.)
 
         // register the file instance
-        this.files[relativePath] = new PendoXliffFile(
-            absolutePath,
-            (loctoolLocale) => this.getLocalizedPath(absolutePath, loctoolLocale),
+        this.files[pathInProject] = new PendoXliffFile(
+            actualPath,
+            (loctoolLocale) => path.join(this.project.getRoot(), this.getLocalizedPath(pathInProject, loctoolLocale)),
             (loctoolLocale) => this.getOuputLocale(loctoolLocale),
             (units) => this.createTranslationSet(units),
         );
 
-        return this.files[relativePath];
+        return this.files[pathInProject];
+    }
+
+    /**
+     * Default path mappings for Pendo XLIFF files.
+     */
+    private static readonly defaultPathMappings: Record<string, { template: string }> = {
+        "**/*.xliff": {
+            template: "[dir]/[basename]_[locale].xl(if)?f",
+        },
+    };
+
+    /**
+     * Provides template mappings for paths (from project config and default ones).
+     *
+     * These can be used to parse locale from path and generate corresponding localized paths.
+     *
+     * Mappings can be specified in project.json like this
+     * ```json
+     * {
+     *   "settings": {
+     *     "pendo": {
+     *       "mappings": {
+     *        "**\/*.xliff": {
+     *            "template": "[dir]/[basename]_[locale].xl(if)?f"
+     *         }
+     *      }
+     *   }
+     * }
+     */
+    private getPathMappings() {
+        // config access based on https://github.com/iLib-js/ilib-loctool-tap-i18n/blob/7585e97497e16475bfce1fc034caf0c7716229e1/YamlFileType.js#L77-L84
+        // @ts-expect-error -- undocumented
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access -- undocumented
+        const mappings: unknown = this.project.settings?.pendo?.mappings;
+
+        if (!mappings) {
+            return PendoXliffFileType.defaultPathMappings;
+        }
+
+        // validate mappings
+        if (!Object.keys(mappings).length) {
+            throw new Error("Path mappings for Pendo XLIFF files must contain at least one entry");
+        }
+
+        for (const [pattern, mapping] of Object.entries(mappings) as [string, unknown][]) {
+            // make sure that mapping is an object with a template string
+            if (
+                !(
+                    mapping &&
+                    typeof mapping === "object" &&
+                    "template" in mapping &&
+                    typeof mapping.template === "string" &&
+                    mapping.template.length > 0
+                )
+            ) {
+                throw new Error(`Path mapping for pattern ${pattern} is missing a template`);
+            }
+        }
+
+        return mappings as Record<string, { template: string }>;
+    }
+
+    /**
+     * Obtain path mapping template applicable to the provided path.
+     */
+    private getMappingForPath(pathInProject: string) {
+        return Object.entries(this.getPathMappings()).find(([pattern]) =>
+            micromatch.isMatch(pathInProject, pattern),
+        )?.[1];
     }
 
     /**
      * Given a source file path and a locale, returns a path where the localized file should be written
      * (accounting for locale mapping and path template mapping).
      */
-    private getLocalizedPath(absolutePath: string, loctoolLocale: string) {
+    private getLocalizedPath(pathInProject: string, loctoolLocale: string) {
         // apply locale mapping for output path
         const outputLocale = this.getOuputLocale(loctoolLocale);
 
-        const { dir, name, ext: extWithDot } = path.parse(absolutePath);
-        // remove optional trailing source locale from filename
-        // @TODO use path templates for the locale swap
-        let localizedName = name.replace(new RegExp(`_${this.sourceLocale}$`), "");
-        // output the localized file in the same directory as the source file
-        localizedName = localizedName.length > 0 ? `${localizedName}_${outputLocale}` : outputLocale;
-        return path.join(dir, `${localizedName}${extWithDot}`);
+        const mapping = this.getMappingForPath(pathInProject);
+        if (!mapping) {
+            throw new Error(`No applicable path mapping found for path: ${pathInProject}`);
+        }
+
+        /* eslint-disable-next-line
+         @typescript-eslint/no-unsafe-assignment,
+         @typescript-eslint/no-unsafe-call,
+         @typescript-eslint/no-explicit-any,
+         @typescript-eslint/no-unsafe-member-access -- yet undocumented utility method,
+         signature based on https://github.com/iLib-js/ilib-loctool-ghfm/blob/4db00063852758e801f1d0b2c7b7a98ead38bde1/MarkdownFile.js#L938-L941 */
+        const localizedPath: string = (this.loctoolAPI.utils as any).formatPath(mapping.template, {
+            sourcepath: pathInProject,
+            locale: outputLocale,
+        });
+
+        return localizedPath;
     }
 
     /**

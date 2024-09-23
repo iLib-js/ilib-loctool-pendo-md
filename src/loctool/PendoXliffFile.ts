@@ -14,9 +14,9 @@ export class PendoXliffFile implements File {
     // @TODO logger
 
     /**
-     * Absolute path to the file being localized (i.e. source file).
+     * Path to the file being localized (i.e. source file).
      */
-    private readonly absolutePath: string;
+    private readonly sourceFilePath: string;
 
     /**
      * Parsed XLIFF file.
@@ -49,12 +49,12 @@ export class PendoXliffFile implements File {
     private componentLists?: ComponentList[];
 
     constructor(
-        absolutePath: string,
+        sourceFilePath: string,
         getLocalizedPath: typeof this.getLocalizedPath,
         getOuputLocale: typeof this.getOuputLocale,
         createTranslationSet: typeof this.createTranslationSet,
     ) {
-        this.absolutePath = absolutePath;
+        this.sourceFilePath = sourceFilePath;
         this.getLocalizedPath = getLocalizedPath;
         this.getOuputLocale = getOuputLocale;
         this.createTranslationSet = createTranslationSet;
@@ -118,7 +118,7 @@ export class PendoXliffFile implements File {
     }
 
     extract(): void {
-        this.xliff = PendoXliffFile.loadXliff(this.absolutePath);
+        this.xliff = PendoXliffFile.loadXliff(this.sourceFilePath);
         const escapedUnits = PendoXliffFile.extractUnits(this.xliff);
 
         // save the escaped units for extraction
@@ -230,8 +230,8 @@ export class PendoXliffFile implements File {
             }
 
             // write out the localized xliff file
-            const localizedPath = this.getLocalizedPath(loctoolLocale);
-            fs.writeFileSync(localizedPath, xliffCopy.serialize(), { encoding: "utf-8" });
+            const localizedFilePath = this.getLocalizedPath(loctoolLocale);
+            fs.writeFileSync(localizedFilePath, xliffCopy.serialize(), { encoding: "utf-8" });
         }
     }
 

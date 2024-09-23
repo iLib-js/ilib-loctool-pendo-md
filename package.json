@@ -42,6 +42,7 @@
         "@types/eslint-config-prettier": "^6.11.3",
         "@types/eslint__js": "^8.42.3",
         "@types/jest": "^29.5.12",
+        "@types/micromatch": "^4.0.9",
         "@types/node": "18",
         "@types/ungap__structured-clone": "^1.2.0",
         "eslint": "^9.9.1",
@@ -66,6 +67,7 @@
         "mdast-util-to-markdown": "^0",
         "micromark": "~2.11.0",
         "micromark-extension-gfm-strikethrough": "^0",
+        "micromatch": "^4.0.8",
         "unist-util-remove-position": "3"
     },
     "peerDependencies": {
