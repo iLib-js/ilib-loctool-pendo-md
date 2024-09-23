@@ -5,7 +5,6 @@ describe("markdown/convert", () => {
     describe("convert", () => {
         it("should escape markdown syntax using components", () => {
             const markdown = `string with *emphasis*, ++underline++, {color: #FF0000}colored text{/color} and [a link](https://example.com)`;
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
             const [escaped, _] = convert(markdown);
 
             expect(escaped).toBe(
@@ -15,7 +14,6 @@ describe("markdown/convert", () => {
 
         it("should output data about components", () => {
             const markdown = `string with *emphasis*, ++underline++, {color: #FF0000}colored text{/color} and [a link](https://example.com)`;
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
             const [_, components] = convert(markdown);
 
             expect(components).toEqual([
