@@ -70,12 +70,12 @@ declare module "loctool" {
          * Return a new instance of a file class for the given path.
          * This method acts as a factory for the file class that
          * goes along with this filetype class.
-         * @param relativePath path to the file to represent \
+         * @param pathInProject path to the file to represent \
          * NOTE: per https://github.com/iLib-js/loctool/blob/285401359f923c1be11e7329b549ed11b4099637/loctool.js#L650
          * it seems that loctool supplies a path relative to the project root
          * @returns a File class instance for the given path
          */
-        newFile(relativePath: string): File;
+        newFile(pathInProject: string): File;
 
         /**
          * Return a unique string that can be used to identify strings

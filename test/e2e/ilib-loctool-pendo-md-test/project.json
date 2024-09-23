@@ -4,9 +4,7 @@
     "description": "translate strings exported from Pendo",
     "projectType": "custom",
     "sourceLocale": "en",
-    "resourceDirs": {
-        "markdown": "target"
-    },
+    "includes": ["l10n/xliff/guides/*.xliff"],
     "excludes": [],
     "settings": {
         "xliffsDir": "xliffs",
@@ -62,10 +60,10 @@
             "sv-SE": "sv",
             "tr-TR": "tr"
         },
-        "tap": {
+        "pendo": {
             "mappings": {
-                "**/*.i18n.yml": {
-                    "template": "[dir]/[locale].i18n.yml"
+                "l10n/xliff/guides/*.xliff": {
+                    "template": "[dir]/[basename]_[locale].xliff"
                 }
             }
         }
