@@ -1,77 +1,63 @@
-import type { API, File, Project, ResourceString, TranslationSet } from "loctool";
+import type { File, ResourceString, TranslationSet } from "loctool";
 import { type TranslationUnit, Xliff } from "ilib-xliff";
-import path from "node:path";
 import fs from "node:fs";
 import { backconvert, convert } from "../markdown/convert";
+import type { ComponentList } from "../markdown/ast-transformer/component";
+
+/**
+ * Properties of a single translation unit extracted from the XLIFF file which
+ * are needed for further processing in loctool.
+ */
+export type TUData = { key: string; sourceLocale: string; source: string; comment?: string };
 
 export class PendoXliffFile implements File {
+    // @TODO logger
+
     /**
      * Absolute path to the file being localized (i.e. source file).
      */
     private readonly absolutePath: string;
 
     /**
-     * Reference to the loctool {@link Project} instance which uses this file type.
+     * Parsed XLIFF file.
+     *
+     * Used during extraction to obtain translation units,
+     * and later during localization to create a localized copy of it.
      */
-    // @TODO don't use Project directly, make FileType inject the necessary data
-    private readonly project: Project;
+    private xliff?: Xliff;
 
     /**
-     * Additional functionality provided by loctool to the plugin.
+     * Modified translation units.
+     *
+     * This is a result of extracting translation units from the XLIFF file
+     * and escaping their markdown syntax.
+     *
+     * Translation Units have modified source strings (escaped markdown syntax) and
+     * modified comments (appended component descriptions).
+     *
+     * Such escaped TUs are output to loctool for translation after extraction.
      */
-    // @TODO for testability, only inject selected API methods
-    // @TODO logger
-    private readonly loctoolAPI: API;
+    private escapedUnits?: TranslationUnit[];
 
-    // @TODO don't hold xliff in memory since it's not used after extraction
     /**
-     * Field to hold loaded xliff file in memory. Use {@link xliff} getter to ensure a loded file.
+     * Data about markdown syntax escaped in corresponding source strings.
+     *
+     * This is used to backconvert localized strings to their original markdown syntax.
+     *
+     * It should map 1:1 to escaped units.
      */
-    private _xliff: Xliff | undefined;
-    private set xliff(xliff: Xliff) {
-        this._xliff = xliff;
-    }
-    /**
-     * Structure of the underlying source XLIFF file.
-     */
-    private get xliff() {
-        if (!this._xliff) {
-            throw new Error("XLIFF file not loaded");
-        }
-        return this._xliff;
-    }
+    private componentLists?: ComponentList[];
 
-    constructor(absolutePath: string, project: Project, loctoolAPI: API) {
+    constructor(
+        absolutePath: string,
+        getLocalizedPath: typeof this.getLocalizedPath,
+        getOuputLocale: typeof this.getOuputLocale,
+        createTranslationSet: typeof this.createTranslationSet,
+    ) {
         this.absolutePath = absolutePath;
-        this.project = project;
-        this.loctoolAPI = loctoolAPI;
-    }
-
-    get sourceLocale() {
-        // Per convention (e.g. https://github.com/iLib-js/loctool/blob/285401359f923c1be11e7329b549ed11b4099637/lib/MarkdownFile.js#L130)
-        // it seems that source locale should always come from the project
-        return this.project.getSourceLocale();
-    }
-
-    getLocalizedPath(locale: string): string {
-        // @TODO replace this with a throw "unsupported" error
-        // to make sure this method is not called unintentionally by loctool;
-        // instead, maybe inject a method to provide localized path
-
-        // it looks like Loctool does not use this method currently
-        // as of https://github.com/iLib-js/loctool/commit/285401359f923c1be11e7329b549ed11b4099637
-        // since it seems to expect the plugin to write all localized files on its own
-        // during {@link localize} method call
-
-        const { dir, name, ext: extWithDot } = path.parse(this.absolutePath);
-
-        // remove optional trailing source locale from filename
-        let localizedName = name.replace(new RegExp(`_${this.sourceLocale}$`), "");
-
-        // output the localized file in the same directory as the source file
-        localizedName = localizedName.length > 0 ? `${localizedName}_${locale}` : locale;
-
-        return path.join(dir, `${localizedName}${extWithDot}`);
+        this.getLocalizedPath = getLocalizedPath;
+        this.getOuputLocale = getOuputLocale;
+        this.createTranslationSet = createTranslationSet;
     }
 
     private static loadXliff(path: string): Xliff {
@@ -83,20 +69,13 @@ export class PendoXliffFile implements File {
         return xliff;
     }
 
-    extract(): void {
-        this.xliff = PendoXliffFile.loadXliff(this.absolutePath);
-    }
-
     /**
      * Escape markdown syntax in source strings of the supplied TUs
      * and insert escaped component descriptions into their comments.
      */
-    private static toEscaped(translationUnits: TranslationUnit[]) {
+    private static toEscapedUnits(translationUnits: TranslationUnit[]) {
         return translationUnits.map((unit) => {
-            // escape the source string
-            // @TODO refactor for testability
-            // maybe extract the conversion logic into a separate class
-            // and inject it into the file class
+            // escape the source string and extract component list
             const [escapedSource, componentList] = convert(unit.source);
 
             // append description of all components to the unit comment
@@ -111,16 +90,12 @@ export class PendoXliffFile implements File {
             const copy = unit.clone();
             copy.source = escapedSource;
             copy.comment = commentWithComponents;
-            return copy;
+            return [copy, componentList] as const;
         });
     }
 
-    /**
-     * Output source strings from the original Pendo XLIFF file as loctool resources
-     * with escaped markdown syntax.
-     */
-    getTranslationSet() {
-        const translationUnits = this.xliff
+    private static extractUnits(xliff: Xliff) {
+        const translationUnits = xliff
             // @TODO only allow xliffs where <file datatype="pendoguide">
             .getTranslationUnits()
             // accept only plain string translation units
@@ -130,71 +105,133 @@ export class PendoXliffFile implements File {
 
         // units passed for further processing in loctool (e.g. creation of an output xliff file)
         // should have markdown syntax escaped
-        const escapedUnits = PendoXliffFile.toEscaped(translationUnits);
-
-        // convert to loctool resources
-        const resources = escapedUnits.map((unit) =>
-            this.loctoolAPI.newResource({
-                resType: "string",
-                key: unit.key,
-                sourceLocale: unit.sourceLocale,
-                source: unit.source,
-                comment: unit.comment,
-                // not sure if this is used by loctool anywhere,
-                // but it's required per the Resource interface definition
-                project: this.project.getProjectId(),
-            }),
-        );
-        // wrap in a translation set
-        const translationSet = this.loctoolAPI.newTranslationSet<ResourceString>(this.sourceLocale);
-        translationSet.addAll(resources);
-
-        return translationSet;
+        return PendoXliffFile.toEscapedUnits(translationUnits);
     }
+
+    /**
+     * Create a deep copy of the supplied XLIFF object.
+     */
+    private static copyXliff(xliff: Xliff): Xliff {
+        const copy = new Xliff();
+        copy.deserialize(xliff.serialize());
+        return copy;
+    }
+
+    extract(): void {
+        this.xliff = PendoXliffFile.loadXliff(this.absolutePath);
+        const escapedUnits = PendoXliffFile.extractUnits(this.xliff);
+
+        // save the escaped units for extraction
+        // and component lists for backconversion
+        this.escapedUnits = escapedUnits.map(([unit]) => unit);
+        this.componentLists = escapedUnits.map(([, componentList]) => componentList);
+    }
+
+    /**
+     * Wraps translation units in loctool's ResourceString objects.
+     *
+     * This should be injected by the file type class which has access to loctool's API.
+     */
+    private readonly createTranslationSet: (units: TUData[]) => TranslationSet<ResourceString>;
+
+    /**
+     * Output source strings from the original Pendo XLIFF file as loctool resources
+     * with escaped markdown syntax.
+     */
+    getTranslationSet(): TranslationSet {
+        if (!this.escapedUnits) {
+            throw new Error("Invalid operation: attempt to get translation set without extracting first.");
+        }
+
+        // note: conversion to loctool resources is done in injected createTranslationSet method
+        // this is because loctool does not really care about translations per file,
+        // since eventually it aggregates everything through FileType.getExtracted method
+        // - injection allows for decoupling the file processing logic from the loctool API
+        return this.createTranslationSet(this.escapedUnits);
+    }
+
+    /**
+     * Given a source path and a locale, returns a path where the localized file should be written.
+     *
+     * This method should be injected by file type class and it should account for
+     * - path template mapping (automatically identify path components like locale)
+     * - locale mapping (if needed)
+     */
+    readonly getLocalizedPath: (loctoolLocale: string) => string;
+
+    /**
+     * Given a target locale (as provided by loctool), return the locale that should be used
+     * in the output file.
+     */
+    private readonly getOuputLocale: (loctoolLocale: string) => string;
 
     /**
      * Given a set of translations provided by loctool, for each locale
      * write out a localized Pendo XLIFF file which is a copy of the source Pendo XLIFF but
      * with applicable translated strings inserted.
      */
-    localize(translations: TranslationSet, locales: string[]): void {
-        for (const locale of locales) {
-            // @TODO handle locale mapping
-            // and add note about the fact that the locale mapping should be handled
-            // by loctool rather than each plugin separately
+    localize(translations: TranslationSet, loctoolLocales: string[]): void {
+        if (!this.xliff || !this.escapedUnits || !this.componentLists) {
+            throw new Error("Invalid operation: attempt to localize without extracting first.");
+        }
+
+        for (const loctoolLocale of loctoolLocales) {
             const translationsForLocale = translations
                 .getAll()
                 .filter(
-                    (resource) => resource.getType() === "string" && resource.getTargetLocale() === locale,
+                    (resource) => resource.getType() === "string" && resource.getTargetLocale() === loctoolLocale,
                 ) as ResourceString[];
 
-            // load a copy of the source xliff - don't mutate the file that's already loaded
-            const xliff = PendoXliffFile.loadXliff(this.absolutePath);
+            // make a deep copy of the source xliff - don't mutate the file that's already loaded
+            const xliffCopy = PendoXliffFile.copyXliff(this.xliff);
+
+            // apply the locale mapping so that the file has expected target locale set
+            const outputLocale = this.getOuputLocale(loctoolLocale);
+
+            // note: no need to set target locale in the file itself, because
+            // ilib-xliff does that based on the first available TU's target locale during serialization
+            // per: https://github.com/iLib-js/xliff/blob/f733c2a65a4215075c8a0b4f0c75aec289de6ae1/src/Xliff.js#L299
+
             // mutate the translation units in the copy
-            for (const unit of xliff.getTranslationUnits()) {
-                const translation = translationsForLocale.find((resource) => resource.getKey() === unit.key);
+            for (const [copyUnit, unitIdx] of xliffCopy
+                .getTranslationUnits()
+                .map((unit, unitIdx) => [unit, unitIdx] as const)) {
+                // get translated string by matching TU ID
+                const translation = translationsForLocale.find((resource) => resource.getKey() === copyUnit.key);
                 if (!translation) {
                     // @TODO warn about missing translation
                     continue;
                 }
 
-                // use the source string as reference to reinsert the original markdown syntax
+                // get extracted component list based on TU index (it has to match since we're operating on a copy of the source xliff)
+                const referenceComponentList = this.componentLists[unitIdx];
+                if (!referenceComponentList) {
+                    // @TODO warn about missing component list
+                    continue;
+                }
+
+                // use the matching component source string as reference to reinsert the original markdown syntax
                 // into the localized string
-                // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                const [_, referenceComponentList] = convert(unit.source);
-                const target = translation.getTarget();
                 try {
+                    const target = translation.getTarget();
                     const unescapedTaget = backconvert(target, referenceComponentList);
                     // update the target string in the xliff
-                    unit.target = unescapedTaget;
+                    copyUnit.target = unescapedTaget;
+
+                    // set target locale in the translation unit
+                    // note: this is a mapped locale which can be different from the locale provided by loctool
+                    copyUnit.targetLocale = outputLocale;
+
+                    // set the translation state
+                    copyUnit.state = "translated";
                 } catch {
                     // @TODO log backconversion error
                 }
             }
 
-            // write the localized xliff file
-            const localizedPath = this.getLocalizedPath(locale);
-            fs.writeFileSync(localizedPath, xliff.serialize(), { encoding: "utf-8" });
+            // write out the localized xliff file
+            const localizedPath = this.getLocalizedPath(loctoolLocale);
+            fs.writeFileSync(localizedPath, xliffCopy.serialize(), { encoding: "utf-8" });
         }
     }
 

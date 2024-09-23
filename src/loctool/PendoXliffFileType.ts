@@ -1,6 +1,6 @@
-import type { FileType, Project, API, TranslationSet } from "loctool";
+import type { FileType, Project, API, TranslationSet, ResourceString } from "loctool";
 import path from "node:path";
-import PendoXliffFile from "./PendoXliffFile";
+import PendoXliffFile, { type TUData } from "./PendoXliffFile";
 
 /**
  * XLIFF file exported from Pendo for translation.
@@ -21,8 +21,6 @@ import PendoXliffFile from "./PendoXliffFile";
  */
 export class PendoXliffFileType implements FileType {
     constructor(project: Project, loctoolAPI: API) {
-        // @TODO don't keep these
-        // instead just inject necessary data
         this.project = project;
         this.loctoolAPI = loctoolAPI;
     }
@@ -59,9 +57,11 @@ export class PendoXliffFileType implements FileType {
     /**
      * [XLIFF datatype](https://docs.oasis-open.org/xliff/v1.2/os/xliff-core.html#datatype)
      * identifier for Pendo markdown strings.
+     *
+     * XLIFFs exported from pendo use <file datatype="pendoguide">,
+     * so resources produced by this plugin are custom escaped versions of that datatype.
      */
-    // @TODO since input is "pendoguide", output should probably be something like "x-pendoguide-escaped"
-    public static readonly datatype = "x-pendo-markdown";
+    public static readonly datatype = "x-pendoguide-escaped";
     getDataType(): string {
         // strings in XLIFFs exported from Pendo are markdown with custom extensions
         return PendoXliffFileType.datatype;
@@ -88,7 +88,7 @@ export class PendoXliffFileType implements FileType {
         }
 
         // @TODO carry over the "already localized" check since it seems to be expected per convention
-        // @TODO make a configurer class that loads path mappings from the project config
+        // @TODO load path template mappings from the project config
 
         return true;
     }
@@ -116,9 +116,76 @@ export class PendoXliffFileType implements FileType {
         if (this.files[relativePath]) {
             throw new Error(`Attempt to create a file that already exists: ${relativePath}`);
         }
+
         const absolutePath = path.join(this.project.getRoot(), relativePath);
-        this.files[relativePath] = new PendoXliffFile(absolutePath, this.project, this.loctoolAPI);
+
+        // inject localized path generator, translation set creation and locale mapping
+        // into the file instance capturing parameters from the current context where needed
+        //
+        // (this is done to decouple file processing logic from plugin-related logic
+        // (accessing loctool API, project, configuration etc.)
+
+        // register the file instance
+        this.files[relativePath] = new PendoXliffFile(
+            absolutePath,
+            (loctoolLocale) => this.getLocalizedPath(absolutePath, loctoolLocale),
+            (loctoolLocale) => this.getOuputLocale(loctoolLocale),
+            (units) => this.createTranslationSet(units),
+        );
+
         return this.files[relativePath];
+    }
+
+    /**
+     * Given a source file path and a locale, returns a path where the localized file should be written
+     * (accounting for locale mapping and path template mapping).
+     */
+    private getLocalizedPath(absolutePath: string, loctoolLocale: string) {
+        // apply locale mapping for output path
+        const outputLocale = this.getOuputLocale(loctoolLocale);
+
+        const { dir, name, ext: extWithDot } = path.parse(absolutePath);
+        // remove optional trailing source locale from filename
+        // @TODO use path templates for the locale swap
+        let localizedName = name.replace(new RegExp(`_${this.sourceLocale}$`), "");
+        // output the localized file in the same directory as the source file
+        localizedName = localizedName.length > 0 ? `${localizedName}_${outputLocale}` : outputLocale;
+        return path.join(dir, `${localizedName}${extWithDot}`);
+    }
+
+    /**
+     * Given a target locale (as provided by loctool), return the locale that should be used in the output file.
+     */
+    private getOuputLocale(loctoolLocale: string): string {
+        // @TODO handle locale mapping
+        // and add note about the fact that the locale mapping should be handled
+        // by loctool rather than each plugin separately
+        return loctoolLocale;
+    }
+
+    /**
+     * Wraps translation units in loctool's ResourceString objects.
+     */
+    private createTranslationSet(units: TUData[]) {
+        // convert to loctool resources
+        const resources = units.map((unit) =>
+            this.loctoolAPI.newResource({
+                resType: "string",
+                key: unit.key,
+                sourceLocale: unit.sourceLocale,
+                source: unit.source,
+                comment: unit.comment,
+                // not sure if this is used by loctool anywhere,
+                // but it's required per the Resource interface definition
+                project: this.project.getProjectId(),
+            }),
+        );
+
+        // wrap in a translation set
+        const translationSet = this.loctoolAPI.newTranslationSet<ResourceString>(this.project.getSourceLocale());
+        translationSet.addAll(resources);
+
+        return translationSet;
     }
 
     getExtracted(): TranslationSet {
@@ -148,6 +215,7 @@ export class PendoXliffFileType implements FileType {
         // not sure how this differs from getExtracted
         return this.getExtracted();
     }
+
     getPseudo(): TranslationSet {
         return this.loctoolAPI.newTranslationSet(this.sourceLocale);
     }
