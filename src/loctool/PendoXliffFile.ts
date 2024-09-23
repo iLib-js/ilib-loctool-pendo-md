@@ -13,13 +13,17 @@ export class PendoXliffFile implements File {
     /**
      * Reference to the loctool {@link Project} instance which uses this file type.
      */
+    // @TODO don't use Project directly, make FileType inject the necessary data
     private readonly project: Project;
 
     /**
      * Additional functionality provided by loctool to the plugin.
      */
+    // @TODO for testability, only inject selected API methods
+    // @TODO logger
     private readonly loctoolAPI: API;
 
+    // @TODO don't hold xliff in memory since it's not used after extraction
     /**
      * Field to hold loaded xliff file in memory. Use {@link xliff} getter to ensure a loded file.
      */
@@ -50,6 +54,10 @@ export class PendoXliffFile implements File {
     }
 
     getLocalizedPath(locale: string): string {
+        // @TODO replace this with a throw "unsupported" error
+        // to make sure this method is not called unintentionally by loctool;
+        // instead, maybe inject a method to provide localized path
+
         // it looks like Loctool does not use this method currently
         // as of https://github.com/iLib-js/loctool/commit/285401359f923c1be11e7329b549ed11b4099637
         // since it seems to expect the plugin to write all localized files on its own
@@ -68,6 +76,8 @@ export class PendoXliffFile implements File {
 
     private static loadXliff(path: string): Xliff {
         const content = fs.readFileSync(path, "utf-8");
+        // @TODO switch to a different parser that supports CDATA
+        // and does not prepend XML declaration
         const xliff = new Xliff();
         xliff.deserialize(content);
         return xliff;
@@ -84,6 +94,9 @@ export class PendoXliffFile implements File {
     private static toEscaped(translationUnits: TranslationUnit[]) {
         return translationUnits.map((unit) => {
             // escape the source string
+            // @TODO refactor for testability
+            // maybe extract the conversion logic into a separate class
+            // and inject it into the file class
             const [escapedSource, componentList] = convert(unit.source);
 
             // append description of all components to the unit comment
@@ -108,6 +121,7 @@ export class PendoXliffFile implements File {
      */
     getTranslationSet() {
         const translationUnits = this.xliff
+            // @TODO only allow xliffs where <file datatype="pendoguide">
             .getTranslationUnits()
             // accept only plain string translation units
             // (pendo should not have any other types of resources)
@@ -145,6 +159,9 @@ export class PendoXliffFile implements File {
      */
     localize(translations: TranslationSet, locales: string[]): void {
         for (const locale of locales) {
+            // @TODO handle locale mapping
+            // and add note about the fact that the locale mapping should be handled
+            // by loctool rather than each plugin separately
             const translationsForLocale = translations
                 .getAll()
                 .filter(
