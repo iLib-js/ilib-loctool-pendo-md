@@ -99,14 +99,21 @@ export class PendoXliffFile implements File {
         });
     }
 
+    /** Datatype identifier for TUs containing Pendo markdown */
+    private static readonly pendoGuideDatatype = "pendoguide";
+
     private static extractUnits(xliff: Xliff) {
         const translationUnits = xliff
-            // @TODO only allow xliffs where <file datatype="pendoguide">
             .getTranslationUnits()
             // accept only plain string translation units
             // (pendo should not have any other types of resources)
             // @TODO log warning for unsupported resource types
-            .filter((unit) => unit.resType === "string" && undefined === unit.resType);
+            .filter(
+                (unit) =>
+                    unit.datatype === undefined ||
+                    (unit.datatype === PendoXliffFile.pendoGuideDatatype && unit.resType === "string") ||
+                    undefined === unit.resType,
+            );
 
         // units passed for further processing in loctool (e.g. creation of an output xliff file)
         // should have markdown syntax escaped
