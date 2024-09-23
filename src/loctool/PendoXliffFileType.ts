@@ -21,6 +21,8 @@ import PendoXliffFile from "./PendoXliffFile";
  */
 export class PendoXliffFileType implements FileType {
     constructor(project: Project, loctoolAPI: API) {
+        // @TODO don't keep these
+        // instead just inject necessary data
         this.project = project;
         this.loctoolAPI = loctoolAPI;
     }
@@ -58,6 +60,7 @@ export class PendoXliffFileType implements FileType {
      * [XLIFF datatype](https://docs.oasis-open.org/xliff/v1.2/os/xliff-core.html#datatype)
      * identifier for Pendo markdown strings.
      */
+    // @TODO since input is "pendoguide", output should probably be something like "x-pendoguide-escaped"
     public static readonly datatype = "x-pendo-markdown";
     getDataType(): string {
         // strings in XLIFFs exported from Pendo are markdown with custom extensions
@@ -84,7 +87,8 @@ export class PendoXliffFileType implements FileType {
             return false;
         }
 
-        // TODO: carry over the "already localized" check since it seems to be expected per convention
+        // @TODO carry over the "already localized" check since it seems to be expected per convention
+        // @TODO make a configurer class that loads path mappings from the project config
 
         return true;
     }
