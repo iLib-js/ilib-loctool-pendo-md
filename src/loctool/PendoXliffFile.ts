@@ -84,6 +84,7 @@ export class PendoXliffFile implements File {
             }
 
             // append description of all components to the unit comment
+            // in the format: [c0: ComponentType, c1: ComponentType, ...]
             const componentComments = componentList
                 .map((component, idx) => {
                     return `c${idx}: ${component.type}`;
