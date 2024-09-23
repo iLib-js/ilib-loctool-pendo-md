@@ -78,6 +78,11 @@ export class PendoXliffFile implements File {
             // escape the source string and extract component list
             const [escapedSource, componentList] = convert(unit.source);
 
+            if (componentList.length === 0) {
+                // no components found, no need to modify the unit
+                return [unit, componentList] as const;
+            }
+
             // append description of all components to the unit comment
             const componentComments = componentList
                 .map((component, idx) => {
