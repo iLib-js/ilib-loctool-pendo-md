@@ -66,6 +66,19 @@ export class PendoXliffFile implements File {
         // and does not prepend XML declaration
         const xliff = new Xliff();
         xliff.deserialize(content);
+
+        // fixup for some unexpected default behavior of ilib-xliff
+        xliff.getTranslationUnits().forEach((unit) => {
+            // 1. Pendo files uses IDs for translation units, but ilib-xliff
+            // does not use them as keys by default - instead it uses `resname` property
+            // or generates a key based on the source string
+
+            // @ts-expect-error -- untyped but exists
+            // per https://github.com/iLib-js/xliff/blob/f733c2a65a4215075c8a0b4f0c75aec289de6ae1/src/Xliff.js#L832-L833
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+            unit.key = unit.id;
+        });
+
         return xliff;
     }
 
@@ -241,6 +254,19 @@ export class PendoXliffFile implements File {
                     // @TODO log backconversion error
                 }
             }
+
+            // reverse fixup for ilib-xliff quirks
+            xliffCopy.getTranslationUnits().forEach((unit) => {
+                // 1. Pendo files uses IDs for translation units, but ilib-xliff
+                // does not use them as keys by default - instead it uses `resname` property
+                // or generates a key based on the source string
+
+                // @ts-expect-error -- untyped but exists
+                // per https://github.com/iLib-js/xliff/blob/f733c2a65a4215075c8a0b4f0c75aec289de6ae1/src/Xliff.js#L832-L833
+                if (unit.key === unit.id) {
+                    unit.key = "";
+                }
+            });
 
             // write out the localized xliff file
             const localizedFilePath = this.getLocalizedPath(loctoolLocale);

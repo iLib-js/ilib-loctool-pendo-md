@@ -24,7 +24,7 @@ const makeXliff = (
         ${transUnits
             .map(
                 (unit) => `
-            <trans-unit resname="${unit.resname}">
+            <trans-unit id="${unit.resname}">
                 <source>${unit.source}</source>
                 <target>${unit.target ?? ""}</target>
                 <note>${unit.note ?? ""}</note>
@@ -52,7 +52,7 @@ const makeLocalizedXliff = (
     <body>
       ${transUnits
           .map(
-              (unit, idx) => `<trans-unit id="${idx + 1}" resname="${unit.resname}" restype="string">
+              (unit) => `<trans-unit id="${unit.resname}" restype="string">
         <source>${unit.source}</source>
         <target state="translated">${unit.target}</target>
         <note>${unit.note ?? ""}</note>
