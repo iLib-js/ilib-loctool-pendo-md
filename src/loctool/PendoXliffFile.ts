@@ -1,14 +1,48 @@
 import type { File, ResourceString, TranslationSet } from "loctool";
-import { type TranslationUnit, Xliff } from "ilib-xliff";
 import fs from "node:fs";
 import { backconvert, convert } from "../markdown/convert";
 import type { ComponentList } from "../markdown/ast-transformer/component";
+import { xml2js, js2xml, type Element } from "ilib-xml-js";
 
 /**
  * Properties of a single translation unit extracted from the XLIFF file which
  * are needed for further processing in loctool.
  */
-export type TUData = { key: string; sourceLocale: string; source: string; comment?: string };
+export type TranslationUnit = { key: string; sourceLocale: string; source: string; target?: string; comment?: string };
+
+type XliffElement = Element & { name: typeof XLIFF.ELEMENT.XLIFF };
+type FileElement = Element & {
+    name: typeof XLIFF.ELEMENT.FILE;
+    attributes: { datatype: typeof XLIFF.VALUE.PENDOGUIDE };
+};
+type TransUnitElement = Element & { name: typeof XLIFF.ELEMENT.TRANS_UNIT };
+
+const XLIFF = {
+    ELEMENT: {
+        XLIFF: "xliff",
+        FILE: "file",
+        BODY: "body",
+        GROUP: "group",
+        TRANS_UNIT: "trans-unit",
+        SOURCE: "source",
+        TARGET: "target",
+        NOTE: "note",
+    },
+    ATTRIBUTE: {
+        ID: "id",
+        RESNAME: "resname",
+        DATATYPE: "datatype",
+        RESTYPE: "restype",
+        SOURCE_LOCALE: "source-language",
+        TARGET_LOCALE: "target-language",
+        STATE: "state",
+        VERSION: "version",
+    },
+    VALUE: {
+        TRANSLATED: "translated",
+        PENDOGUIDE: "pendoguide",
+    },
+} as const;
 
 export class PendoXliffFile implements File {
     // @TODO logger
@@ -24,7 +58,7 @@ export class PendoXliffFile implements File {
      * Used during extraction to obtain translation units,
      * and later during localization to create a localized copy of it.
      */
-    private xliff?: Xliff;
+    private xliffDocument?: Element;
 
     /**
      * Modified translation units.
@@ -43,10 +77,8 @@ export class PendoXliffFile implements File {
      * Data about markdown syntax escaped in corresponding source strings.
      *
      * This is used to backconvert localized strings to their original markdown syntax.
-     *
-     * It should map 1:1 to escaped units.
      */
-    private componentLists?: ComponentList[];
+    private componentLists?: { [unitKey: string]: ComponentList };
 
     constructor(
         sourceFilePath: string,
@@ -60,26 +92,138 @@ export class PendoXliffFile implements File {
         this.createTranslationSet = createTranslationSet;
     }
 
-    private static loadXliff(path: string): Xliff {
+    private static loadXliffDocument(path: string) {
         const content = fs.readFileSync(path, "utf-8");
-        // @TODO switch to a different parser that supports CDATA
-        // and does not prepend XML declaration
-        const xliff = new Xliff();
-        xliff.deserialize(content);
 
-        // fixup for some unexpected default behavior of ilib-xliff
-        xliff.getTranslationUnits().forEach((unit) => {
-            // 1. Pendo files uses IDs for translation units, but ilib-xliff
-            // does not use them as keys by default - instead it uses `resname` property
-            // or generates a key based on the source string
+        // parse XML
+        const document = xml2js(content, { compact: false }) as Element;
 
-            // @ts-expect-error -- untyped but exists
-            // per https://github.com/iLib-js/xliff/blob/f733c2a65a4215075c8a0b4f0c75aec289de6ae1/src/Xliff.js#L832-L833
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-            unit.key = unit.id;
-        });
+        // ensure it's a version 1.2 XLIFF
+        const root = PendoXliffFile.getXliffRoot(document);
+        if (root.attributes?.[XLIFF.ATTRIBUTE.VERSION] !== "1.2") {
+            throw new Error("Only XLIFF version 1.2 is supported");
+        }
 
-        return xliff;
+        return document;
+    }
+
+    private static getXliffRoot(xliffDocument: Element): XliffElement {
+        const [xliff] = xliffDocument.elements ?? [];
+        if (!xliff || xliff.name !== "xliff") {
+            throw new Error("Invalid XLIFF document structure");
+        }
+        return xliff as XliffElement;
+    }
+
+    /**
+     * Find <file datatype="pendoguide"> elements within the supplied XLIFF root <xliff>.
+     *
+     * @param xliff reference to the root <xliff> element from the XLIFF document tree
+     * @returns array of {@link Element} objects which are references to inside of the XML tree.
+     * These elements can be mutated to change the contents of an existing XLIFF file structure.
+     */
+    private static findFileElements(xliff: XliffElement): FileElement[] {
+        // <file datatype="pendoguide">
+        return (xliff.elements?.filter(
+            (el) =>
+                el.name === XLIFF.ELEMENT.FILE && el.attributes?.[XLIFF.ATTRIBUTE.DATATYPE] === XLIFF.VALUE.PENDOGUIDE,
+        ) ?? []) as FileElement[];
+    }
+
+    /**
+     * Find <trans-unit> elements within the supplied XLIFF <file> element.
+     *
+     * @param fileElement reference to <file> element from the XLIFF document tree
+     *
+     * @returns array of {@link Element} objects which are references to inside of the XML tree.
+     * These elements can be mutated to change the contents of an existing XLIFF file structure.
+     */
+    private static findTransUnitElements(file: FileElement): TransUnitElement[] {
+        // <body>
+        const [body] = file.elements?.filter((el) => el.name === XLIFF.ELEMENT.BODY) ?? [];
+        if (!body) {
+            // @TODO warn about missing body element
+            return [];
+        }
+
+        // <group>
+        // process all groups in the body
+        const groups = body.elements?.filter((el) => el.name === XLIFF.ELEMENT.GROUP);
+
+        // <trans-unit> (aggregate from all groups and direct in body)
+        const units =
+            [...(groups?.flatMap((group) => group.elements ?? []) ?? []), ...(body.elements ?? [])].filter(
+                (el) => el.name === XLIFF.ELEMENT.TRANS_UNIT,
+            ) ?? [];
+
+        return units as TransUnitElement[];
+    }
+
+    private static extractUnits(xliff: XliffElement): TranslationUnit[] {
+        const translationUnits: TranslationUnit[] = [];
+
+        for (const file of PendoXliffFile.findFileElements(xliff)) {
+            const sourceLocale = file.attributes?.[XLIFF.ATTRIBUTE.SOURCE_LOCALE];
+            // source locale is required to identify translation units
+            if (!sourceLocale || typeof sourceLocale !== "string") {
+                // @TODO warn about missing source locale
+                continue;
+            }
+
+            for (const unitElement of PendoXliffFile.findTransUnitElements(file)) {
+                try {
+                    const { key, source, comment } = PendoXliffFile.extractUnitData(unitElement);
+
+                    // create a translation unit object
+                    translationUnits.push({
+                        key,
+                        sourceLocale,
+                        source,
+                        comment: comment ? `${comment}` : undefined,
+                    });
+                } catch (_) {
+                    // @TODO warn about unit extraction error
+                }
+            }
+        }
+
+        return translationUnits;
+    }
+
+    private static extractUnitData(unitElement: TransUnitElement): Omit<TranslationUnit, "sourceLocale"> {
+        // extract translation unit data
+
+        // in Pendo XLIFF files, the ID attribute is used as a key for translation units (rather than resname);
+        // a key is required for loctool to identify translation units and it must be a string (not an index)
+        const key = unitElement.attributes?.[XLIFF.ATTRIBUTE.ID];
+        if (!key || typeof key !== "string") {
+            throw new Error("Missing or invalid key attribute");
+        }
+
+        const sourceElement = unitElement.elements?.find((el) => el.name === XLIFF.ELEMENT.SOURCE);
+        // support plaintext and CDATA content
+        const source = sourceElement?.elements
+            ?.map((el) => {
+                if (el.type === "text") {
+                    return el.text;
+                } else if (el.type === "cdata") {
+                    return el.cdata;
+                } else {
+                    return "";
+                }
+            })
+            .join("");
+        // non-empty source string is required for unit to be meaningful
+        if (!source) {
+            throw new Error("Missing or empty source string");
+        }
+
+        // extract optional comment from the unit
+        const comment = unitElement.elements
+            ?.find((el) => el.name === XLIFF.ELEMENT.NOTE)
+            ?.elements?.find((el) => el.type === "text")?.text as string | undefined;
+
+        return { key, source, comment };
     }
 
     /**
@@ -106,51 +250,39 @@ export class PendoXliffFile implements File {
             const commentWithComponents = [unit.comment, `[${componentComments}]`].join(" ");
 
             // create a copy of the translation unit with changed source and comment
-            const copy = unit.clone();
+            const copy = { ...unit };
             copy.source = escapedSource;
             copy.comment = commentWithComponents;
             return [copy, componentList] as const;
         });
     }
 
-    /** Datatype identifier for TUs containing Pendo markdown */
-    private static readonly pendoGuideDatatype = "pendoguide";
+    extract(): void {
+        this.xliffDocument = PendoXliffFile.loadXliffDocument(this.sourceFilePath);
+        const xliff = PendoXliffFile.getXliffRoot(this.xliffDocument);
+        const translationUnits = PendoXliffFile.extractUnits(xliff);
 
-    private static extractUnits(xliff: Xliff) {
-        const translationUnits = xliff
-            .getTranslationUnits()
-            // accept only plain string translation units
-            // (pendo should not have any other types of resources)
-            // @TODO log warning for unsupported resource types
-            .filter(
-                (unit) =>
-                    unit.datatype === undefined ||
-                    (unit.datatype === PendoXliffFile.pendoGuideDatatype && unit.resType === "string") ||
-                    undefined === unit.resType,
-            );
+        // in case of duplicate keys, keep only the first unit
+        const uniqueKeys = new Set<string>();
+        const uniqueUnits = translationUnits.filter((unit) => {
+            if (uniqueKeys.has(unit.key)) {
+                // @TODO warn about duplicate key
+                return false;
+            }
+            uniqueKeys.add(unit.key);
+            return true;
+        });
 
         // units passed for further processing in loctool (e.g. creation of an output xliff file)
         // should have markdown syntax escaped
-        return PendoXliffFile.toEscapedUnits(translationUnits);
-    }
-
-    /**
-     * Create a deep copy of the supplied XLIFF object.
-     */
-    private static copyXliff(xliff: Xliff): Xliff {
-        const copy = new Xliff();
-        copy.deserialize(xliff.serialize());
-        return copy;
-    }
-
-    extract(): void {
-        this.xliff = PendoXliffFile.loadXliff(this.sourceFilePath);
-        const escapedUnits = PendoXliffFile.extractUnits(this.xliff);
+        const escapedUnits = PendoXliffFile.toEscapedUnits(uniqueUnits);
 
         // save the escaped units for extraction
         // and component lists for backconversion
         this.escapedUnits = escapedUnits.map(([unit]) => unit);
-        this.componentLists = escapedUnits.map(([, componentList]) => componentList);
+        this.componentLists = Object.fromEntries(
+            escapedUnits.map(([unit, componentList]) => [unit.key, componentList]),
+        );
     }
 
     /**
@@ -158,7 +290,7 @@ export class PendoXliffFile implements File {
      *
      * This should be injected by the file type class which has access to loctool's API.
      */
-    private readonly createTranslationSet: (units: TUData[]) => TranslationSet<ResourceString>;
+    private readonly createTranslationSet: (units: TranslationUnit[]) => TranslationSet<ResourceString>;
 
     /**
      * Output source strings from the original Pendo XLIFF file as loctool resources
@@ -192,12 +324,19 @@ export class PendoXliffFile implements File {
     private readonly getOuputLocale: (loctoolLocale: string) => string;
 
     /**
+     * Create a deep copy of the supplied XLIFF object.
+     */
+    private static copyXliff(xliffDocument: Element): Element {
+        return xml2js(js2xml(xliffDocument, { compact: false }), { compact: false }) as Element;
+    }
+
+    /**
      * Given a set of translations provided by loctool, for each locale
      * write out a localized Pendo XLIFF file which is a copy of the source Pendo XLIFF but
      * with applicable translated strings inserted.
      */
     localize(translations: TranslationSet, loctoolLocales: string[]): void {
-        if (!this.xliff || !this.escapedUnits || !this.componentLists) {
+        if (!this.xliffDocument || !this.escapedUnits || !this.componentLists) {
             throw new Error("Invalid operation: attempt to localize without extracting first.");
         }
 
@@ -209,68 +348,73 @@ export class PendoXliffFile implements File {
                 ) as ResourceString[];
 
             // make a deep copy of the source xliff - don't mutate the file that's already loaded
-            const xliffCopy = PendoXliffFile.copyXliff(this.xliff);
+            const localizedXliffDocument = PendoXliffFile.copyXliff(this.xliffDocument);
+            const xliff = PendoXliffFile.getXliffRoot(localizedXliffDocument);
 
             // apply the locale mapping so that the file has expected target locale set
             const outputLocale = this.getOuputLocale(loctoolLocale);
 
-            // note: no need to set target locale in the file itself, because
-            // ilib-xliff does that based on the first available TU's target locale during serialization
-            // per: https://github.com/iLib-js/xliff/blob/f733c2a65a4215075c8a0b4f0c75aec289de6ae1/src/Xliff.js#L299
+            // set target locale in all output files
+            // note: this is a mapped locale which can be different from the locale provided by loctool
+            const files = PendoXliffFile.findFileElements(xliff);
+            for (const file of files) {
+                file.attributes[XLIFF.ATTRIBUTE.TARGET_LOCALE] = outputLocale;
+            }
 
             // mutate the translation units in the copy
-            for (const [copyUnit, unitIdx] of xliffCopy
-                .getTranslationUnits()
-                .map((unit, unitIdx) => [unit, unitIdx] as const)) {
-                // get translated string by matching TU ID
-                const translation = translationsForLocale.find((resource) => resource.getKey() === copyUnit.key);
-                if (!translation) {
-                    // @TODO warn about missing translation
-                    continue;
-                }
-
-                // get extracted component list based on TU index (it has to match since we're operating on a copy of the source xliff)
-                const referenceComponentList = this.componentLists[unitIdx];
-                if (!referenceComponentList) {
-                    // @TODO warn about missing component list
-                    continue;
-                }
-
-                // use the matching component source string as reference to reinsert the original markdown syntax
-                // into the localized string
+            const copyUnits = files.flatMap((file) => PendoXliffFile.findTransUnitElements(file));
+            for (const unitElement of copyUnits) {
                 try {
+                    // extract translation unit data for easier access
+                    const unitData = PendoXliffFile.extractUnitData(unitElement);
+
+                    // get translated string by matching TU ID
+                    const translation = translationsForLocale.find((resource) => resource.getKey() === unitData.key);
+                    if (!translation) {
+                        throw new Error("Missing translation for unit");
+                    }
+
+                    // get extracted component list based on TU key
+                    const referenceComponentList = this.componentLists[unitData.key];
+                    if (!referenceComponentList) {
+                        throw new Error("Missing component list for unit");
+                    }
+
+                    // use the matching component source string as reference to reinsert the original markdown syntax
+                    // into the localized string
                     const target = translation.getTarget();
                     const unescapedTaget = backconvert(target, referenceComponentList);
-                    // update the target string in the xliff
-                    copyUnit.target = unescapedTaget;
 
-                    // set target locale in the translation unit
-                    // note: this is a mapped locale which can be different from the locale provided by loctool
-                    copyUnit.targetLocale = outputLocale;
+                    // update the target string in the xliff element
 
-                    // set the translation state
-                    copyUnit.state = "translated";
-                } catch {
+                    // if necessary, create the target element
+                    let targetElement = unitElement.elements?.find((el) => el.name === XLIFF.ELEMENT.TARGET);
+                    if (!targetElement) {
+                        targetElement = { type: "element", name: XLIFF.ELEMENT.TARGET, elements: [] };
+                        if (!unitElement.elements) {
+                            unitElement.elements = [];
+                        }
+                        unitElement.elements.push(targetElement);
+                    }
+
+                    // replace the target string
+                    targetElement.elements = [{ type: "text", text: unescapedTaget }];
+
+                    // set target state attribute to "translated"
+                    targetElement.attributes = {
+                        ...(targetElement.attributes ?? {}),
+                        [XLIFF.ATTRIBUTE.STATE]: XLIFF.VALUE.TRANSLATED,
+                    };
+                } catch (_) {
                     // @TODO log backconversion error
                 }
             }
 
-            // reverse fixup for ilib-xliff quirks
-            xliffCopy.getTranslationUnits().forEach((unit) => {
-                // 1. Pendo files uses IDs for translation units, but ilib-xliff
-                // does not use them as keys by default - instead it uses `resname` property
-                // or generates a key based on the source string
-
-                // @ts-expect-error -- untyped but exists
-                // per https://github.com/iLib-js/xliff/blob/f733c2a65a4215075c8a0b4f0c75aec289de6ae1/src/Xliff.js#L832-L833
-                if (unit.key === unit.id) {
-                    unit.key = "";
-                }
-            });
-
             // write out the localized xliff file
             const localizedFilePath = this.getLocalizedPath(loctoolLocale);
-            fs.writeFileSync(localizedFilePath, xliffCopy.serialize(), { encoding: "utf-8" });
+            fs.writeFileSync(localizedFilePath, js2xml(localizedXliffDocument, { compact: false, spaces: 4 }), {
+                encoding: "utf-8",
+            });
         }
     }
 

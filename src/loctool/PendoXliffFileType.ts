@@ -1,6 +1,6 @@
 import type { FileType, Project, API, TranslationSet, ResourceString } from "loctool";
 import path from "node:path";
-import PendoXliffFile, { type TUData } from "./PendoXliffFile";
+import PendoXliffFile, { type TranslationUnit } from "./PendoXliffFile";
 import micromatch from "micromatch";
 
 /**
@@ -276,7 +276,7 @@ export class PendoXliffFileType implements FileType {
     /**
      * Wraps translation units in loctool's ResourceString objects.
      */
-    private createTranslationSet(units: TUData[]) {
+    private createTranslationSet(units: TranslationUnit[]) {
         // convert to loctool resources
         const resources = units.map((unit) =>
             this.loctoolAPI.newResource({
