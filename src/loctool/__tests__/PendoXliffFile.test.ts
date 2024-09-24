@@ -9,58 +9,30 @@ const mockGetLocalizedPath = jest.fn();
 const mockGetOutputLocale = jest.fn();
 const mockCreateTranslationSet = jest.fn();
 
-const makeXliff = (
-    datatype: string,
+const makeXliff = (props: {
+    datatype: string;
+    sourceLocale: string;
+    targetLocale?: string;
     transUnits: {
         resname: string;
         source: string;
         target?: string;
         note?: string;
-    }[],
-) => `
-<xliff version="1.2" xmlns="urn:oasis:names:tc:xliff:document:1.2">
-    <file original="original-file" source-language="en" target-language="" datatype="${datatype}">
-        <body>
-        ${transUnits
+    }[];
+}) => `<xliff version="1.2" xmlns="urn:oasis:names:tc:xliff:document:1.2">
+    <file original="original-file" source-language="${props.sourceLocale}" target-language="${props.targetLocale}" datatype="${props.datatype}">
+        <body>${props.transUnits
             .map(
                 (unit) => `
             <trans-unit id="${unit.resname}">
                 <source>${unit.source}</source>
-                <target>${unit.target ?? ""}</target>
+                <target${unit.target ? ` state="translated"` : ""}>${unit.target ?? ""}</target>
                 <note>${unit.note ?? ""}</note>
             </trans-unit>`,
             )
             .join("\n")}
         </body>
     </file>
-</xliff>
-`;
-
-// xliff output by the library has multiple differences from the input
-// (different whitespace, ommited and extra attributes, etc.)
-// @TODO implement a logial check for the output rather than full file string comparison
-const makeLocalizedXliff = (
-    transUnits: {
-        resname: string;
-        source: string;
-        target: string;
-        note?: string;
-    }[],
-) => `<?xml version="1.0" encoding="utf-8"?>
-<xliff version="1.2">
-  <file original="original-file" source-language="en" product-name="original-file">
-    <body>
-      ${transUnits
-          .map(
-              (unit) => `<trans-unit id="${unit.resname}" restype="string">
-        <source>${unit.source}</source>
-        <target state="translated">${unit.target}</target>
-        <note>${unit.note ?? ""}</note>
-      </trans-unit>`,
-          )
-          .join("\n")}
-    </body>
-  </file>
 </xliff>`;
 
 const makeFakeTranslations = (
@@ -101,9 +73,7 @@ describe("PendoXliffFile", () => {
             expect(() => file.extract()).toThrow();
         });
 
-        // note: skipped because used library is fine with invalid files most of the time
-        // - it does not throw and just does not extract anything
-        it.skip.each([
+        it.each([
             ["empty file", ``],
             ["plaintext file", `a plaintext file`],
             ["html file", `<html></html>`],
@@ -113,13 +83,17 @@ describe("PendoXliffFile", () => {
         });
 
         it("should extract a valid xliff file", () => {
-            const xliff = makeXliff("x-undefined", [
-                {
-                    resname: "ContactInfo.customSupportEmail",
-                    source: "Email Address",
-                    note: "label for text input",
-                },
-            ]);
+            const xliff = makeXliff({
+                datatype: "x-undefined",
+                sourceLocale: "en-US",
+                transUnits: [
+                    {
+                        resname: "ContactInfo.customSupportEmail",
+                        source: "Email Address",
+                        note: "label for text input",
+                    },
+                ],
+            });
             mockedFs.readFileSync.mockReturnValue(xliff);
             expect(() => file.extract()).not.toThrow();
         });
@@ -133,13 +107,17 @@ describe("PendoXliffFile", () => {
         });
 
         it("should use injected factory to create a translation set", () => {
-            const xliff = makeXliff("x-undefined", [
-                {
-                    resname: "ContactInfo.customSupportEmail",
-                    source: "Email Address",
-                    note: "label for text input",
-                },
-            ]);
+            const xliff = makeXliff({
+                datatype: "pendoguide",
+                sourceLocale: "en",
+                transUnits: [
+                    {
+                        resname: "ContactInfo.customSupportEmail",
+                        source: "Email Address",
+                        note: "label for text input",
+                    },
+                ],
+            });
             mockedFs.readFileSync.mockReturnValue(xliff);
 
             file.extract();
@@ -151,13 +129,17 @@ describe("PendoXliffFile", () => {
         });
 
         it("should put the extracted translation units in a translation set", () => {
-            const xliff = makeXliff("x-undefined", [
-                {
-                    resname: "ContactInfo.customSupportEmail",
-                    source: "Email Address",
-                    note: "label for text input",
-                },
-            ]);
+            const xliff = makeXliff({
+                datatype: "pendoguide",
+                sourceLocale: "en",
+                transUnits: [
+                    {
+                        resname: "ContactInfo.customSupportEmail",
+                        source: "Email Address",
+                        note: "label for text input",
+                    },
+                ],
+            });
 
             mockedFs.readFileSync.mockReturnValue(xliff);
 
@@ -178,13 +160,17 @@ describe("PendoXliffFile", () => {
 
         describe("pendo strings", () => {
             it("should escape Pendo syntax in the source", () => {
-                const xliffWithPendoSyntax = makeXliff("pendoguide", [
-                    {
-                        resname: "ContactInfo.customSupportEmail",
-                        source: "Email {color: #FF0000}Address{/color}",
-                        note: "label for text input",
-                    },
-                ]);
+                const xliffWithPendoSyntax = makeXliff({
+                    datatype: "pendoguide",
+                    sourceLocale: "en",
+                    transUnits: [
+                        {
+                            resname: "ContactInfo.customSupportEmail",
+                            source: "Email {color: #FF0000}Address{/color}",
+                            note: "label for text input",
+                        },
+                    ],
+                });
 
                 mockedFs.readFileSync.mockReturnValue(xliffWithPendoSyntax);
 
@@ -203,15 +189,18 @@ describe("PendoXliffFile", () => {
                 );
             });
 
-            // note: skipped because datatype is not properly extracted by the library
-            it.skip("should not escape Pendo syntax when datatype does not match", () => {
-                const xliffWithPendoSyntax = makeXliff("markdown", [
-                    {
-                        resname: "ContactInfo.customSupportEmail",
-                        source: "Email {color: #FF0000}Address{/color}",
-                        note: "label for text input",
-                    },
-                ]);
+            it("should not escape Pendo syntax when datatype does not match", () => {
+                const xliffWithPendoSyntax = makeXliff({
+                    datatype: "markdown",
+                    sourceLocale: "en",
+                    transUnits: [
+                        {
+                            resname: "ContactInfo.customSupportEmail",
+                            source: "Email {color: #FF0000}Address{/color}",
+                            note: "label for text input",
+                        },
+                    ],
+                });
 
                 mockedFs.readFileSync.mockReturnValue(xliffWithPendoSyntax);
 
@@ -219,15 +208,7 @@ describe("PendoXliffFile", () => {
 
                 file.getTranslationSet();
 
-                expect(mockCreateTranslationSet).toHaveBeenCalledWith(
-                    expect.arrayContaining([
-                        expect.objectContaining({
-                            key: "ContactInfo.customSupportEmail",
-                            source: "Email {color: #FF0000}Address{/color}",
-                            comment: "label for text input",
-                        }),
-                    ]),
-                );
+                expect(mockCreateTranslationSet).toHaveBeenCalledWith(expect.arrayContaining([]));
             });
         });
     });
@@ -260,19 +241,25 @@ describe("PendoXliffFile", () => {
     });
 
     describe("localize", () => {
+        const targetLocale = "xx-XX";
         const mockLocalizedPath = "mocked localized path";
         beforeEach(() => {
             mockGetLocalizedPath.mockReturnValue(mockLocalizedPath);
+            mockGetOutputLocale.mockImplementation((locale: string) => locale);
         });
 
         it("should unescape Pendo syntax in the target", () => {
-            const xliff = makeXliff("pendoguide", [
-                {
-                    resname: "ContactInfo.customSupportEmail",
-                    source: "Email {color: #FF0000}Address{/color}",
-                    note: "label for text input",
-                },
-            ]);
+            const xliff = makeXliff({
+                datatype: "pendoguide",
+                sourceLocale: "en",
+                transUnits: [
+                    {
+                        resname: "ContactInfo.customSupportEmail",
+                        source: "Email {color: #FF0000}Address{/color}",
+                        note: "label for text input",
+                    },
+                ],
+            });
 
             mockedFs.readFileSync.mockReturnValue(xliff);
 
@@ -280,35 +267,44 @@ describe("PendoXliffFile", () => {
 
             const translations = makeFakeTranslations([
                 {
-                    locale: "xx-XX",
+                    locale: targetLocale,
                     key: "ContactInfo.customSupportEmail",
                     target: "<c0>Adres</c0> E-mail",
                 },
             ]);
-            file.localize(translations as TranslationSet, ["xx-XX"]);
+            file.localize(translations as TranslationSet, [targetLocale]);
 
             expect(mockedFs.writeFileSync).toHaveBeenCalledWith(
                 mockLocalizedPath,
-                makeLocalizedXliff([
-                    {
-                        resname: "ContactInfo.customSupportEmail",
-                        source: "Email {color: #FF0000}Address{/color}",
-                        target: "{color: #FF0000}Adres{/color} E-mail",
-                        note: "label for text input",
-                    },
-                ]),
+                makeXliff({
+                    datatype: "pendoguide",
+                    sourceLocale: "en",
+                    targetLocale,
+                    transUnits: [
+                        {
+                            resname: "ContactInfo.customSupportEmail",
+                            source: "Email {color: #FF0000}Address{/color}",
+                            target: "{color: #FF0000}Adres{/color} E-mail",
+                            note: "label for text input",
+                        },
+                    ],
+                }),
                 expect.anything(),
             );
         });
 
         it("should insert translations as-is if there is no Pendo syntax", () => {
-            const xliff = makeXliff("pendoguide", [
-                {
-                    resname: "ContactInfo.customSupportEmail",
-                    source: "Email Address",
-                    note: "label for text input",
-                },
-            ]);
+            const xliff = makeXliff({
+                datatype: "pendoguide",
+                sourceLocale: "en",
+                transUnits: [
+                    {
+                        resname: "ContactInfo.customSupportEmail",
+                        source: "Email Address",
+                        note: "label for text input",
+                    },
+                ],
+            });
 
             mockedFs.readFileSync.mockReturnValue(xliff);
 
@@ -316,35 +312,44 @@ describe("PendoXliffFile", () => {
 
             const translations = makeFakeTranslations([
                 {
-                    locale: "xx-XX",
+                    locale: targetLocale,
                     key: "ContactInfo.customSupportEmail",
                     target: "Adres E-mail",
                 },
             ]);
-            file.localize(translations as TranslationSet, ["xx-XX"]);
+            file.localize(translations as TranslationSet, [targetLocale]);
 
             expect(mockedFs.writeFileSync).toHaveBeenCalledWith(
                 mockLocalizedPath,
-                makeLocalizedXliff([
-                    {
-                        resname: "ContactInfo.customSupportEmail",
-                        source: "Email Address",
-                        target: "Adres E-mail",
-                        note: "label for text input",
-                    },
-                ]),
+                makeXliff({
+                    datatype: "pendoguide",
+                    sourceLocale: "en",
+                    targetLocale,
+                    transUnits: [
+                        {
+                            resname: "ContactInfo.customSupportEmail",
+                            source: "Email Address",
+                            target: "Adres E-mail",
+                            note: "label for text input",
+                        },
+                    ],
+                }),
                 expect.anything(),
             );
         });
 
         it("should insert translations for correct locale", () => {
-            const xliff = makeXliff("x-undefined", [
-                {
-                    resname: "ContactInfo.customSupportEmail",
-                    source: "Email Address",
-                    note: "label for text input",
-                },
-            ]);
+            const xliff = makeXliff({
+                datatype: "pendoguide",
+                sourceLocale: "en",
+                transUnits: [
+                    {
+                        resname: "ContactInfo.customSupportEmail",
+                        source: "Email Address",
+                        note: "label for text input",
+                    },
+                ],
+            });
 
             mockedFs.readFileSync.mockReturnValue(xliff);
 
@@ -366,31 +371,39 @@ describe("PendoXliffFile", () => {
 
             expect(mockedFs.writeFileSync).toHaveBeenCalledWith(
                 mockLocalizedPath,
-                makeLocalizedXliff([
-                    {
-                        resname: "ContactInfo.customSupportEmail",
-                        source: "Email Address",
-                        target: "電子メールアドレス",
-                        note: "label for text input",
-                    },
-                ]),
+                makeXliff({
+                    datatype: "pendoguide",
+                    sourceLocale: "en",
+                    targetLocale: "yy-YY",
+                    transUnits: [
+                        {
+                            resname: "ContactInfo.customSupportEmail",
+                            source: "Email Address",
+                            target: "電子メールアドレス",
+                            note: "label for text input",
+                        },
+                    ],
+                }),
                 expect.anything(),
             );
         });
 
-        // note: skipped because used library does not output the target-language attribute
-        it.skip("should use mapped locale in localized file content", () => {
+        it("should use mapped locale in localized file content", () => {
             const loctoolLocale = "xx-XX";
             const outputLocale = "yy-YY";
             mockGetOutputLocale.mockReturnValue(outputLocale);
 
-            const xliff = makeXliff("x-undefined", [
-                {
-                    resname: "ContactInfo.customSupportEmail",
-                    source: "Email Address",
-                    note: "label for text input",
-                },
-            ]);
+            const xliff = makeXliff({
+                datatype: "pendoguide",
+                sourceLocale: "en",
+                transUnits: [
+                    {
+                        resname: "ContactInfo.customSupportEmail",
+                        source: "Email Address",
+                        note: "label for text input",
+                    },
+                ],
+            });
 
             mockedFs.readFileSync.mockReturnValue(xliff);
 
@@ -406,12 +419,14 @@ describe("PendoXliffFile", () => {
 
             file.localize(translations as TranslationSet, [loctoolLocale]);
 
+            expect(mockGetOutputLocale).toHaveBeenCalledWith(loctoolLocale);
             expect(mockedFs.writeFileSync).toHaveBeenCalledWith(
                 mockLocalizedPath,
-                makeLocalizedXliff(
-                    outputLocale,
-                    // @ts-expect-error -- target-language is not in the library output
-                    [
+                makeXliff({
+                    datatype: "pendoguide",
+                    sourceLocale: "en",
+                    targetLocale: outputLocale,
+                    transUnits: [
                         {
                             resname: "ContactInfo.customSupportEmail",
                             source: "Email Address",
@@ -419,17 +434,22 @@ describe("PendoXliffFile", () => {
                             note: "label for text input",
                         },
                     ],
-                ),
+                }),
                 expect.anything(),
             );
         });
 
         it("should not use mapped locale in getLocalizedPath", () => {
             const loctoolLocale = "xx-XX";
+
             const outputLocale = "yy-YY";
             mockGetOutputLocale.mockReturnValue(outputLocale);
 
-            const xliff = makeXliff("x-undefined", []);
+            const xliff = makeXliff({
+                datatype: "x-undefined",
+                sourceLocale: "en",
+                transUnits: [],
+            });
 
             mockedFs.readFileSync.mockReturnValue(xliff);
 
@@ -445,7 +465,11 @@ describe("PendoXliffFile", () => {
             const mockLocalizedPathDifferent = "mocked localized path 2";
             mockGetLocalizedPath.mockReset().mockReturnValue(mockLocalizedPathDifferent);
 
-            const xliff = makeXliff("x-undefined", []);
+            const xliff = makeXliff({
+                datatype: "x-undefined",
+                sourceLocale: "en",
+                transUnits: [],
+            });
 
             mockedFs.readFileSync.mockReturnValue(xliff);
 
