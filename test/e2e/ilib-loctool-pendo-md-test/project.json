@@ -4,7 +4,7 @@
     "description": "translate strings exported from Pendo",
     "projectType": "custom",
     "sourceLocale": "en",
-    "includes": ["l10n/xliff/guides/*.xliff"],
+    "includes": ["l10n/xliff/guides/*.xl(if)?f"],
     "excludes": [],
     "settings": {
         "xliffsDir": "translations",
@@ -14,8 +14,8 @@
         },
         "pendo": {
             "mappings": {
-                "l10n/xliff/guides/*.xliff": {
-                    "template": "[dir]/[basename]_[locale].xliff"
+                "l10n/xliff/guides/*.xl(if)?f": {
+                    "template": "[dir]/[basename]_[locale].[extension]"
                 }
             }
         }

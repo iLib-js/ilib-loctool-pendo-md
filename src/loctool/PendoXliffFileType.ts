@@ -161,8 +161,8 @@ export class PendoXliffFileType implements FileType {
      * Default path mappings for Pendo XLIFF files.
      */
     private static readonly defaultPathMappings: Record<string, { template: string }> = {
-        "**/*.xliff": {
-            template: "[dir]/[basename]_[locale].xl(if)?f",
+        "**/*.xl(if)?f": {
+            template: "[dir]/[basename]_[locale].[extension]",
         },
     };
 
@@ -191,7 +191,7 @@ export class PendoXliffFileType implements FileType {
      *     "pendo": {
      *       "mappings": {
      *        "**\/*.xliff": {
-     *            "template": "[dir]/[basename]_[locale].xl(if)?f"
+     *            "template": "[dir]/[basename]_[locale].[extension]"
      *         }
      *      }
      *   }
@@ -232,6 +232,7 @@ export class PendoXliffFileType implements FileType {
      */
     private getMappingForPath(pathInProject: string) {
         return Object.entries(this.getPathMappings()).find(([pattern]) =>
+            // note: this should be offloaded to loctool eventually
             micromatch.isMatch(pathInProject, pattern),
         )?.[1];
     }
