@@ -400,7 +400,7 @@ export class PendoXliffFile implements File {
                     // use the matching component source string as reference to reinsert the original markdown syntax
                     // into the localized string
                     const target = translation.getTarget();
-                    const unescapedTaget = backconvert(target, referenceComponentList);
+                    const unescapedTarget = backconvert(target, referenceComponentList);
 
                     // update the target string in the xliff element
 
@@ -415,7 +415,7 @@ export class PendoXliffFile implements File {
                     }
 
                     // replace the target string
-                    targetElement.elements = [{ type: "text", text: unescapedTaget }];
+                    targetElement.elements = [{ type: "text", text: unescapedTarget }];
 
                     // set target state attribute to "translated"
                     targetElement.attributes = {
