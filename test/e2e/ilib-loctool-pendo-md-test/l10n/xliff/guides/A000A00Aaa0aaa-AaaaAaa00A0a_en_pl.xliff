@@ -19,7 +19,8 @@
 Second paragraph of a multi-paragraph string.]]></source>
                     <target state="translated">Pierwszy akapit wieloakapitowego ciągu.
 
-Drugi akapit wieloakapitowego ciągu.</target>
+Drugi akapit wieloakapitowego ciągu.
+        </target>
                     <note>TextView</note>
                 </trans-unit>
                 <trans-unit id="5f8bec10-d663-43d7-a185-49824564060c|md">

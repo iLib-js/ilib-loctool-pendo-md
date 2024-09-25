@@ -94,8 +94,11 @@ export class PendoXliffFile implements File {
      * Data about markdown syntax escaped in corresponding source strings.
      *
      * This is used to backconvert localized strings to their original markdown syntax.
+     *
+     * Null values indicate that no components were found in the source string
+     * and there is no need for backconversion.
      */
-    private componentLists?: { [unitKey: string]: ComponentList };
+    private componentLists?: { [unitKey: string]: ComponentList | null };
 
     constructor(
         sourceFilePath: string,
@@ -254,7 +257,7 @@ export class PendoXliffFile implements File {
 
             if (componentList.length === 0) {
                 // no components found, no need to modify the unit
-                return [unit, componentList] as const;
+                return [unit, null] as const;
             }
 
             // append description of all components to the unit comment
@@ -390,32 +393,32 @@ export class PendoXliffFile implements File {
                     if (!translation) {
                         throw new Error("Missing translation for unit");
                     }
+                    let target = translation.getTarget();
+
+                    // make sure that this unit has been processed and there is some data about components for it
+                    if (!(unitData.key in this.componentLists)) {
+                        throw new Error("Missing extracted component data for given unit");
+                    }
 
                     // get extracted component list based on TU key
                     const referenceComponentList = this.componentLists[unitData.key];
-                    if (!referenceComponentList) {
-                        throw new Error("Missing component list for unit");
+                    if (null !== referenceComponentList) {
+                        // use the matching component source string as reference to reinsert the original markdown syntax
+                        // into the localized string
+                        target = backconvert(target, referenceComponentList);
                     }
 
-                    // use the matching component source string as reference to reinsert the original markdown syntax
-                    // into the localized string
-                    const target = translation.getTarget();
-                    const unescapedTarget = backconvert(target, referenceComponentList);
-
                     // update the target string in the xliff element
-
-                    // if necessary, create the target element
                     let targetElement = unitElement.elements?.find((el) => el.name === XLIFF.ELEMENT.TARGET);
                     if (!targetElement) {
+                        // if necessary, create the target element
                         targetElement = { type: "element", name: XLIFF.ELEMENT.TARGET, elements: [] };
                         if (!unitElement.elements) {
                             unitElement.elements = [];
                         }
                         unitElement.elements.push(targetElement);
                     }
-
-                    // replace the target string
-                    targetElement.elements = [{ type: "text", text: unescapedTarget }];
+                    targetElement.elements = [{ type: "text", text: target }];
 
                     // set target state attribute to "translated"
                     targetElement.attributes = {
