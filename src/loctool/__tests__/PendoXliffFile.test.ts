@@ -99,6 +99,12 @@ describe("PendoXliffFile", () => {
             expect(() => file.extract()).toThrow();
         });
 
+        it("should throw when given xliff version 2.0", () => {
+            const xliff = `<xliff xmlns="urn:oasis:names:tc:xliff:document:2.0" version="2.0" srcLang="en" trgLang="fr"><file id="f1"></file></xliff>`;
+            mockedFs.readFileSync.mockReturnValue(xliff);
+            expect(() => file.extract()).toThrow();
+        });
+
         it("should extract a valid xliff file", () => {
             const xliff = makeXliff({
                 datatype: "x-undefined",
