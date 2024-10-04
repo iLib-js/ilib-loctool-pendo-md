@@ -29,7 +29,8 @@
     ],
     "scripts": {
         "build": "tsc -p tsconfig.build.json",
-        "clean": "rm -rf dist ; git clean -f -d *",
+        "clean": "rm -rf dist",
+        "clean:untracked": "git clean -fd *",
         "debug": "node --inspect-brk node_modules/.bin/jest -i",
         "dist": "npm-run-all build test pkg",
         "pkg": "npm pack",
