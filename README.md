@@ -1,3 +1,6 @@
+> :warning: **Deprecation Notice** :warning:
+> This repository has been deprecated. Please use the corresponding package from the [iLib-js monorepo](https://github.com/iLib-js/ilib-mono) instead.
+
 # ilib-loctool-pendo-md
 
 [Loctool](https://github.com/iLib-js/loctool) plugin to handle translation strings exported from [Pendo](https://www.pendo.io/).
